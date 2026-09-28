@@ -20,6 +20,18 @@ voice → audio samples → FFT coefficients → q-series → complex visualizat
 
 Fourier-sound should make each arrow replaceable.
 
+## Maresh source trail
+
+The video belongs to a larger body of Maresh's complex-visualization work rather than an isolated demo.
+
+- [graveolensa/tsungfruve](https://github.com/graveolensa/tsungfruve) describes itself as his mathematics journal/diary with code and links the same [diproton YouTube channel](https://youtube.com/diproton).
+- [complex-geography/lacunaries](https://github.com/graveolensa/tsungfruve/tree/master/complex-geography/lacunaries) records a dedicated lacunary-functions area.
+- [qpochpoly.py](https://github.com/graveolensa/tsungfruve/blob/master/qpochpoly.py) builds unit-disk complex phase plots from finite products and q-Pochhammer products.
+- [borwein_cubic_alternates.py](https://github.com/graveolensa/tsungfruve/blob/master/borwein_cubic_alternates.py) implements Borwein cubic theta functions both as lattice sums and as faster q-Pochhammer expressions.
+- Maresh's 2013 note [“lacunary functions and intersecting three dimensional cobordism categories”](https://tsungfruve.wordpress.com/2013/05/07/lacunary-functions-and-intersecting-three-dimensional-cobordism-categories/) says he had been collecting lacunary functions and making phase portraits of them, and gives explicit lacunary products.
+
+This trail strongly connects the video to his earlier lacunary/q-series/phase-portrait work. It does **not** yet identify the exact formula driven by the FFT in video `NcqSDIGU02I`. Keep that as an explicit research question instead of silently substituting one of the older formulas.
+
 ## Retrieve the captions
 
 Do not hand-maintain a stale copy of YouTube's caption track. Fetch the current caption file from the source when needed:
