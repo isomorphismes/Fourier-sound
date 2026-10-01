@@ -53,13 +53,13 @@ $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -DANativeActivity_onCreate=fourier_glue_on_create -I$(GLUE) -c $$< -o $$@
 
 $(BUILD)/android/$(1)/speaker_glue.o: $(GLUE)/android_native_app_glue.c
-	mkdir -p $(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -I$(GLUE) -c $< -o $@
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -I$(GLUE) -c $$< -o $$@
 
 $(BUILD)/android/$(1)/libfourier_render_ref.so: $(RENDER) $(HEADERS)
-	mkdir -p $(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 $(RENDER) -lm -o $@
-	$(TOOLCHAIN)/llvm-readelf -h $@
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 $(RENDER) -lm -o $$@
+	$(TOOLCHAIN)/llvm-readelf -h $$@
 
 $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so: android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(HEADERS) $(BUILD)/android/$(1)/glue.o
 	mkdir -p $$(@D)
