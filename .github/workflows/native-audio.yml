@@ -72,3 +72,23 @@ jobs:
             build/fourier-speaker-x86_64.apk.sha256
             build/source-commit.txt
           if-no-files-found: error
+
+
+  media:
+    if: github.event_name == 'pull_request' && github.head_ref == 'validate/sounds-corpus-integration'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install media decoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Real public-audio Fourier rendering from sounds corpus
+        run: make media-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fourier-sounds-corpus-validation-${{ github.event.pull_request.head.sha || github.sha }}
+          path: build/media/*.ppm
+          if-no-files-found: error
