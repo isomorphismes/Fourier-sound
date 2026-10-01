@@ -17,7 +17,7 @@ ANDROID_KEYSTORE ?= .test-signing/_/build/app/wegert-debug.keystore
 VERSION_CODE ?= 1
 
 SOUNDS_REPO ?= https://github.com/dilapidated-shed/sounds.git
-SOUNDS_REV ?= d4fcf6f80a7dc57375f3aa873560f9ea36cdf3af
+SOUNDS_REV ?= cde1a53a099d94881145498b4b906da81eba1cc5
 SOUNDS_DIR = $(BUILD)/sounds
 
 MEDIA_DIR = $(BUILD)/media
@@ -61,7 +61,6 @@ $(SOUNDS_DIR)/.ready:
 	rm -rf $(SOUNDS_DIR).tmp $(SOUNDS_DIR)
 	git clone --quiet '$(SOUNDS_REPO)' $(SOUNDS_DIR).tmp
 	git -C $(SOUNDS_DIR).tmp checkout --quiet --detach '$(SOUNDS_REV)'
-	cd $(SOUNDS_DIR).tmp && sh scripts/fetch-public-audio.sh
 	mv $(SOUNDS_DIR).tmp $(SOUNDS_DIR)
 	touch $@
 
