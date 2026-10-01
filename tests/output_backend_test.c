@@ -144,7 +144,7 @@ int main(void)
     assert(audio_output_open(&out, wanted, &error) == AUDIO_OK);
     assert(audio_output_start(out) == AUDIO_OK);
     assert(audio_output_stop(out) == AUDIO_OK);
-    assert(wait_count == 1);
+    assert(wait_count == 2);
     assert(audio_output_close(&out) == AUDIO_OK);
 
     puts("PASS AAudio output open, actual properties, write, partial write, disconnect, stop and close");
