@@ -28,7 +28,7 @@ downloaded recording
   -> explicit 4096-sample framing
   -> choose loudest block by RMS
   -> mean removal
-  -> Hann window
+  -> periodic Hann window
   -> production radix-2 FFT
   -> full complex coefficients
   -> current smoke-test polynomial construction
