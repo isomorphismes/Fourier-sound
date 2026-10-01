@@ -7,7 +7,7 @@ WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Iacceptance
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
 HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h acceptance/*.h)
-REFERENCE = fourier/dft.c fourier/fft.c fourier/complex_field.c render/wegert.c render/ppm.c
+REFERENCE = fourier/dft.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/ppm.c
 ANDROID_HOME ?= /opt/android-sdk
 NDK ?= $(ANDROID_HOME)/ndk/27.2.12479018
 TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
@@ -44,13 +44,18 @@ $(BUILD)/fft-test: tests/fft_test.c fourier/dft.c fourier/fft.c $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/fft_test.c fourier/dft.c fourier/fft.c -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test
+$(BUILD)/framing-test: tests/framing_test.c fourier/framing.c fourier/fft.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/framing_test.c fourier/framing.c fourier/fft.c -lm -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
 	$(BUILD)/speaker-input-test
 	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
 	$(BUILD)/fft-test
+	$(BUILD)/framing-test
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
