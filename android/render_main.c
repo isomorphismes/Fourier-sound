@@ -90,13 +90,19 @@ static void present(struct application *a)
         finish(a, "ALLOCATION_ERROR");
         return;
     }
+
+    int64_t render_started = now_ms();
     bool rendered = make_acceptance_portrait(
         pixels, (size_t)width, (size_t)height);
+    int64_t render_ms = now_ms() - render_started;
+
+    int64_t present_started = now_ms();
     enum native_window_output_result result = rendered
         ? android_window_present_rgb24(
               a->app->window, pixels,
               (size_t)width, (size_t)height, pixel_count)
         : NATIVE_WINDOW_OUTPUT_CONVERSION_ERROR;
+    int64_t present_ms = now_ms() - present_started;
     free(pixels);
 
     if (result != NATIVE_WINDOW_OUTPUT_OK) {
@@ -109,8 +115,10 @@ static void present(struct application *a)
     a->height = height;
     a->presented = true;
     a->deadline_ms = now_ms() + 5000;
-    LOG("DISPLAY_PRESENTED function=z^3-1 width=%d height=%d duration_seconds=5",
-        width, height);
+    LOG("DISPLAY_PRESENTED function=z^3-1 width=%d height=%d pixels=%zu "
+        "render_ms=%lld present_ms=%lld duration_seconds=5",
+        width, height, pixel_count,
+        (long long)render_ms, (long long)present_ms);
 }
 
 static void command(struct android_app *app, int32_t code)
