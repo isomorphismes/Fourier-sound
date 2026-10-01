@@ -158,8 +158,20 @@ int main(int argc, char **argv)
                 hypot(candidate.real, candidate.imaginary);
             double fraction = candidate_magnitude /
                 (full_magnitude + candidate_magnitude + 1.0e-12);
-            double alpha = 0.72 * sqrt(fraction);
-            if (alpha > 0.72) alpha = 0.72;
+
+            /*
+             * A low candidate fraction is present almost everywhere because
+             * a polynomial term has global support.  Showing that as opacity
+             * merely tints the whole Wegert image.  Reserve the annotation
+             * for places where the candidate-static field is at least 20% of
+             * the combined local magnitude, then expand the remaining range.
+             */
+            double alpha = 0.0;
+            if (fraction > 0.20) {
+                double visible = (fraction - 0.20) / 0.80;
+                alpha = 0.72 * sqrt(visible);
+                if (alpha > 0.72) alpha = 0.72;
+            }
 
             overlay[index] =
                 rgb24_overlay(base[index], static_color, alpha);
