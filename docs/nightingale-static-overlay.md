@@ -24,8 +24,9 @@ The experiment:
 7. leaves the original coefficients and original Wegert image untouched;
 8. projects only the weighted candidate coefficients through the same current
    polynomial construction;
-9. overlays dark gray at up to 72% opacity according to the candidate field's
-   local magnitude.
+9. ignores the nearly uniform low-ratio background below 14% of the combined
+   local magnitude, then overlays charcoal at up to 80% opacity according to
+   the remaining candidate-field ratio.
 
 The output pair is:
 
