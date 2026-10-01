@@ -25,3 +25,22 @@ window size, holds it for five seconds, and logs `DISPLAY_RESULT`.
 This is intentionally a static acceptance producer. Once the MIRO A1 screen
 path is physically verified, live sound-driven frames can replace the producer
 without changing the window sink.
+
+## Physical acceptance
+
+The MIRO A1 acceptance run should verify both the picture and the log.
+
+Expected screen: a full-window Wegert portrait of `z^3 - 1` held for five
+seconds.
+
+Expected log sequence includes `DISPLAY_PRESENTED` followed by
+`DISPLAY_RESULT status=PRESENTED`. `DISPLAY_PRESENTED` reports:
+
+- actual window width and height;
+- pixel count;
+- `render_ms`: CPU complex-field + Wegert-color time;
+- `present_ms`: RGBA conversion, native-window lock/copy/post time.
+
+Those timings are diagnostic rather than acceptance thresholds. If full-screen
+CPU coloring is too slow on the MIRO A1, the already-separated RGB/window
+boundary remains useful while the dynamic renderer moves to GLES.
