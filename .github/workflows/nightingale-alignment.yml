@@ -1,4 +1,4 @@
-name: Nightingale alignment probe
+name: Nightingale splice verification
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - experiments/nightingale-splice
 
 jobs:
-  align:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,67 +17,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Fetch archival second rendition
+      - name: Build and test transcript-aligned splice
+        run: make nightingale-splice-test
+
+      - name: Record source and splice durations
         shell: bash
         run: |
-          set -euo pipefail
-          mkdir -p build/nightingale
-          url='https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg'
-          curl --fail --location --retry 3 --output build/nightingale/source.ogg "$url"
-          printf '%s  %s\n' '5de570b67b20f4e2932fb960b3e3b0f071981544' build/nightingale/source.ogg | sha1sum -c -
-          ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 build/nightingale/source.ogg
+          {
+            printf 'source\t'
+            ffprobe -v error -show_entries format=duration -of csv=p=0 build/media/nightingale-second.ogg
+            printf 'splice\t'
+            ffprobe -v error -show_entries format=duration -of csv=p=0 build/media/nightingale-memory-name.flac
+          } | tee build/media/nightingale-durations.tsv
 
-      - name: Probe likely phrase boundaries
+      - name: Make splice waveform
         shell: bash
         run: |
-          set -euo pipefail
-          for threshold in -20 -24 -28 -32 -36 -40; do
-            echo "===== silencedetect ${threshold} dB ====="
-            ffmpeg -nostdin -hide_banner -i build/nightingale/source.ogg \
-              -af "silencedetect=noise=${threshold}dB:d=0.10" \
-              -f null - 2>&1 | grep -E 'silence_(start|end|duration)' || true
-          done | tee build/nightingale/silence-boundaries.txt
-
-      - name: Cross-check phrase timing with speech recognition
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check --quiet openai-whisper
-          whisper build/nightingale/source.ogg \
-            --model tiny.en \
-            --language English \
-            --word_timestamps True \
-            --initial_prompt 'When I am no longer even a memory, just a name, I hope my voice may perpetuate the great work of my life. God bless my dear old comrades of Balaclava and bring them safe to shore. Florence Nightingale.' \
-            --output_format json \
-            --output_dir build/nightingale
-          python - <<'PY'
-          import json
-          from pathlib import Path
-
-          path = next(Path("build/nightingale").glob("*.json"))
-          data = json.loads(path.read_text())
-          for segment in data.get("segments", []):
-              for word in segment.get("words", []):
-                  print(f'{word["start"]:8.3f} {word["end"]:8.3f} {word["word"]}')
-          PY
-
-      - name: Make inspection images
-        shell: bash
-        run: |
-          set -euo pipefail
-          ffmpeg -nostdin -loglevel error -y -i build/nightingale/source.ogg \
+          ffmpeg -nostdin -loglevel error -y \
+            -i build/media/nightingale-memory-name.flac \
             -filter_complex 'aformat=channel_layouts=mono,showwavespic=s=2400x500:split_channels=0' \
-            -frames:v 1 build/nightingale/waveform.png
-          ffmpeg -nostdin -loglevel error -y -i build/nightingale/source.ogg \
-            -lavfi 'showspectrumpic=s=2400x1000:legend=1:scale=log' \
-            -frames:v 1 build/nightingale/spectrum.png
+            -frames:v 1 build/media/nightingale-memory-name-waveform.png
 
-      - name: Upload alignment evidence
+      - name: Upload verified splice
         uses: actions/upload-artifact@v4
         with:
-          name: nightingale-alignment
+          name: nightingale-memory-name
           path: |
-            build/nightingale/waveform.png
-            build/nightingale/spectrum.png
-            build/nightingale/silence-boundaries.txt
-            build/nightingale/*.json
+            build/media/nightingale-memory-name.flac
+            build/media/nightingale-memory-name-waveform.png
+            build/media/nightingale-durations.tsv
+            tests/media/nightingale.md
+            tests/media/nightingale-alignment.tsv
