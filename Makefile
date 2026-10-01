@@ -84,8 +84,8 @@ $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so: andro
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/render_main.c render/android/native_window_output.c render/rgb24_rgba8888.c fourier/complex_field.c render/wegert.c $(BUILD)/android/$(1)/render_glue.o -landroid -llog -lm -o $$@
 
 $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so: android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/dft.c fourier/complex_field.c render/wegert.c render/rgb24_rgba8888.c render/android/native_window_output.c $(HEADERS) $(BUILD)/android/$(1)/glue.o
-	mkdir -p $(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/dft.c fourier/complex_field.c render/wegert.c render/rgb24_rgba8888.c render/android/native_window_output.c $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $@
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/dft.c fourier/complex_field.c render/wegert.c render/rgb24_rgba8888.c render/android/native_window_output.c $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $$@
 
 $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so: android/speaker_main.c audio/android/aaudio_output.c audio/interface/speaker_input.c audio/interface/audio_result.c $(HEADERS) $(BUILD)/android/$(1)/speaker_glue.o
 	mkdir -p $$(@D)
@@ -121,14 +121,14 @@ $(BUILD)/fourier-voice-$(1).apk: $(BUILD)/android/$(1)/voice-staging/lib/$(1)/li
 	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/VoiceManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code $(VERSION_CODE) --version-name 0.1.0 -o $(BUILD)/android/$(1)/voice-unsigned.apk
 	cd $(BUILD)/android/$(1)/voice-staging && zip -0 -q -r ../voice-unsigned.apk lib
 	$(TOOLS)/zipalign -f -P 16 4 $(BUILD)/android/$(1)/voice-unsigned.apk $(BUILD)/android/$(1)/voice-aligned.apk
-	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $@ $(BUILD)/android/$(1)/voice-aligned.apk
-	$(TOOLS)/apksigner verify --verbose --print-certs $@ > $(BUILD)/android/$(1)/voice-signer.txt
+	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $$@ $(BUILD)/android/$(1)/voice-aligned.apk
+	$(TOOLS)/apksigner verify --verbose --print-certs $$@ > $(BUILD)/android/$(1)/voice-signer.txt
 	grep -Fq 'Signer #1 certificate SHA-256 digest: de9b1d47c5a65e6d46a204b79dd9ee566b9d3c9832ba81ebc4213d3392e92ff9' $(BUILD)/android/$(1)/voice-signer.txt
-	$(TOOLS)/zipalign -c -P 16 4 $@
-	unzip -Z1 $@ > $(BUILD)/android/$(1)/voice-entries.txt
-	! grep -E '(^|/)classes[0-9]*\.dex$$' $(BUILD)/android/$(1)/voice-entries.txt
+	$(TOOLS)/zipalign -c -P 16 4 $$@
+	unzip -Z1 $$@ > $(BUILD)/android/$(1)/voice-entries.txt
+	! grep -E '(^|/)classes[0-9]*\.dex$$$$' $(BUILD)/android/$(1)/voice-entries.txt
 	$(TOOLCHAIN)/llvm-readelf -h $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so
-	sha256sum $@ > $@.sha256
+	sha256sum $$@ > $$@.sha256
 
 $(BUILD)/fourier-speaker-$(1).apk: $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so android/SpeakerManifest.xml
 	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/SpeakerManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code $(VERSION_CODE) --version-name 0.1.0 -o $(BUILD)/android/$(1)/speaker-unsigned.apk
