@@ -14,8 +14,10 @@ PCM
   -> PPM file sink
 ```
 
-The renderer does not receive Fourier coefficients and does not know which
-mathematical construction produced the complex values.
+The shared `math/complex_value.h` type is transform-neutral. The renderer does
+not receive Fourier coefficients and does not know which mathematical
+construction produced the complex values. Likewise, `render/rgb24.h` is
+color-mapping-neutral, so the PPM sink does not depend on Wegert.
 
 ## DFT
 
