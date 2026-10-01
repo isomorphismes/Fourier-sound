@@ -6,7 +6,8 @@ CFLAGS ?= -O2 -g
 WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Irender -Iacceptance
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
-HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h render/*.h acceptance/*.h)\nRENDER = fourier/dft.c fourier/complex_field.c render/wegert.c render/ppm.c
+HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h render/*.h acceptance/*.h)
+RENDER = fourier/dft.c fourier/complex_field.c render/wegert.c render/ppm.c
 ANDROID_HOME ?= /opt/android-sdk
 NDK ?= $(ANDROID_HOME)/ndk/27.2.12479018
 TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
