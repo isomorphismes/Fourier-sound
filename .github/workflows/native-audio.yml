@@ -81,10 +81,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Install media decoder
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+      - name: Ensure media decoder
+        run: command -v ffmpeg || sudo apt-get install -y ffmpeg
       - name: Real public-audio Fourier rendering from sounds corpus
         run: make media-test
       - uses: actions/upload-artifact@v4
