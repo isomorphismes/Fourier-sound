@@ -135,7 +135,7 @@ int main(int argc, char **argv)
     struct rgb24 *overlay = malloc(IMAGE_PIXELS * sizeof(*overlay));
     assert(base && overlay);
 
-    const struct rgb24 static_color = {40U, 40U, 48U};
+    const struct rgb24 static_color = {20U, 20U, 24U};
     double alpha_sum = 0.0;
     double alpha_max = 0.0;
 
@@ -163,14 +163,17 @@ int main(int argc, char **argv)
              * A low candidate fraction is present almost everywhere because
              * a polynomial term has global support.  Showing that as opacity
              * merely tints the whole Wegert image.  Reserve the annotation
-             * for places where the candidate-static field is at least 20% of
+             * for places where the candidate-static field is at least 14% of
              * the combined local magnitude, then expand the remaining range.
+             * The cutoff is deliberately visual: it suppresses the nearly
+             * uniform global tint while preserving the localized high-ratio
+             * regions of this particular candidate field.
              */
             double alpha = 0.0;
-            if (fraction > 0.20) {
-                double visible = (fraction - 0.20) / 0.80;
-                alpha = 0.72 * sqrt(visible);
-                if (alpha > 0.72) alpha = 0.72;
+            if (fraction > 0.14) {
+                double visible = (fraction - 0.14) / 0.86;
+                alpha = 0.80 * sqrt(visible);
+                if (alpha > 0.80) alpha = 0.80;
             }
 
             overlay[index] =
