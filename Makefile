@@ -24,17 +24,21 @@ $(BUILD)/pcm-test: tests/pcm_test.c $(COMMON) $(HEADERS)
 $(BUILD)/backend-test: tests/backend_test.c tests/fake/aaudio/AAudio.h audio/android/aaudio_input.c $(COMMON) $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) -Itests/fake tests/backend_test.c audio/android/aaudio_input.c $(COMMON) -pthread -lm -o $@
-test: $(BUILD)/pcm-test $(BUILD)/backend-test
+$(BUILD)/output-backend-test: tests/output_backend_test.c tests/fake/aaudio/AAudio.h audio/android/aaudio_output.c audio/interface/audio_result.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) -Itests/fake tests/output_backend_test.c audio/android/aaudio_output.c audio/interface/audio_result.c -lm -o $@
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
+	$(BUILD)/output-backend-test
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
 	mkdir -p $$(@D)
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -DANativeActivity_onCreate=fourier_glue_on_create -I$(GLUE) -c $$< -o $$@
-$(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so: android/native_main.c android/permission.c audio/android/aaudio_input.c $(COMMON) $(HEADERS) $(BUILD)/android/$(1)/glue.o
+$(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so: android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(HEADERS) $(BUILD)/android/$(1)/glue.o
 	mkdir -p $$(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/native_main.c android/permission.c audio/android/aaudio_input.c $(COMMON) $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $$@
+	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $$@
 $(BUILD)/fourier-microphone-$(1).apk: $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so android/AndroidManifest.xml
 	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/AndroidManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code $(VERSION_CODE) --version-name 0.1.0 -o $(BUILD)/android/$(1)/unsigned.apk
 	cd $(BUILD)/android/$(1)/staging && zip -0 -q -r ../unsigned.apk lib
