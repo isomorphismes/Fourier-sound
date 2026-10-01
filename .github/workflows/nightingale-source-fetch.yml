@@ -1,0 +1,30 @@
+name: Nightingale source fetch
+
+on:
+  push:
+    branches:
+      - experiments/nightingale-fourier-movie
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fetch and verify archival source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl --fail --location --retry 3 \
+            --output nightingale-second.ogg \
+            'https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg'
+          printf '%s  %s\n' \
+            '5de570b67b20f4e2932fb960b3e3b0f071981544' \
+            'nightingale-second.ogg' | sha1sum -c -
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nightingale-second-source
+          path: nightingale-second.ogg
+          if-no-files-found: error
