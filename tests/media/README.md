@@ -74,7 +74,7 @@ Requirements for the optional target are `curl`, `ffmpeg`, and `sha1sum`.
 ## Construction comparison experiment
 
 The `experiments/audio-construction-compare` branch holds sound analysis and
-Wegert coloring fixed while comparing the dense polynomial against one explicit
-dyadic sparse exponent schedule. It writes `.dense.ppm` and `.dyadic.ppm`
+Wegert coloring fixed while comparing the same first twelve Fourier coefficients under dense exponents
+`0..11` versus one explicit dyadic sparse exponent schedule. It writes `.dense.ppm` and `.dyadic.ppm`
 for each recording. The dyadic schedule is a candidate experiment, not a Maresh
 reconstruction.
