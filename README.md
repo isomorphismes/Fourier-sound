@@ -65,9 +65,7 @@ PCM buffer and a native acceptance APK. Captured PCM also passes through
 `fourier/pcm_block`, an Android-free conversion boundary for mathematical code.
 It introduces no decomposition algorithm or visualization.
 
-Run `make test` for host checks. See [audio implementation](docs/audio-input.md)
-for the accelerometer comparison and [acceptance](docs/acceptance.md) for APK
-builds and the MIRO A1 procedure.
+Run `make test` for deterministic host checks. Run `make media-test` for the opt-in real-audio corpus (thunder, iceberg contact, Dvořák and Bartók); see [real audio fixtures](tests/media/README.md). See [audio implementation](docs/audio-input.md) for the accelerometer comparison and [acceptance](docs/acceptance.md) for APK builds and the MIRO A1 procedure.
 
 ## References
 
