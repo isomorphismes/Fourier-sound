@@ -1,0 +1,32 @@
+name: Nightingale cylinder-static overlay
+
+on:
+  push:
+    branches:
+      - experiments/nightingale-cylinder-static-overlay
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install audio utilities
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Run deterministic tests
+        run: make test
+
+      - name: Render Nightingale baseline and static overlay
+        run: make nightingale-static-overlay
+
+      - name: Upload visual comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightingale-cylinder-static-overlay
+          path: |
+            build/media/nightingale-baseline.ppm
+            build/media/nightingale-static-overlay.ppm
