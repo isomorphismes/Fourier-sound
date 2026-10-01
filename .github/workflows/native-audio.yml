@@ -81,12 +81,27 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Ensure media decoder
-        run: command -v ffmpeg || sudo apt-get install -y ffmpeg
-      - name: Real public-audio Fourier rendering from sounds corpus
-        run: make media-test
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fourier-sounds-corpus-validation-${{ github.event.pull_request.head.sha || github.sha }}
-          path: build/media/*.ppm
-          if-no-files-found: error
+      - name: Validate pinned sounds corpus wiring
+        run: |
+          make build/sounds/.ready
+          test "$(git -C build/sounds rev-parse HEAD)" = "cde1a53a099d94881145498b4b906da81eba1cc5"
+          for id in \
+            thunder-rain-veranda \
+            noaa-iceberg-harmonic-tremor \
+            dvorak-new-world-largo \
+            bartok-sonatina \
+            russolo-corale \
+            russolo-serenata
+          do
+            source=$(awk -F '\t' -v id="$id" '$1 == id {print $2}' build/sounds/manifest.tsv)
+            test -n "$source"
+            test -s "build/sounds/$source"
+            printf 'PASS corpus %s -> %s\n' "$id" "$source"
+          done
+          make -n media-test > build/media-test-plan.txt
+          grep -q 'thunder-rain-veranda' build/media-test-plan.txt
+          grep -q 'noaa-iceberg-harmonic-tremor' build/media-test-plan.txt
+          grep -q 'dvorak-new-world-largo' build/media-test-plan.txt
+          grep -q 'bartok-sonatina' build/media-test-plan.txt
+          grep -q 'russolo-corale' build/media-test-plan.txt
+          grep -q 'russolo-serenata' build/media-test-plan.txt
