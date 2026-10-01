@@ -89,10 +89,8 @@ bool wegert_color_complex(struct fourier_complex value,
     if (!rgb || !isfinite(value.real) || !isfinite(value.imaginary))
         return false;
 
+    double phase = atan2(value.imaginary, value.real);
     double magnitude = hypot(value.real, value.imaginary);
-    double phase = magnitude == 0.0
-        ? 0.0
-        : atan2(value.imaginary, value.real);
     if (magnitude < 1.0e-12) magnitude = 1.0e-12;
 
     return wegert_color_from_phase_log_modulus(phase, log(magnitude), rgb);
