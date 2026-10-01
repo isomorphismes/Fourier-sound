@@ -34,9 +34,15 @@ DVORAK_URL = https://upload.wikimedia.org/wikipedia/commons/c/c3/Antonin_Dvorak_
 BARTOK_URL = https://upload.wikimedia.org/wikipedia/commons/1/1c/Bartok_-_Sonatina.ogg
 RUSSOLO_CORALE_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_08_Corale-1921.mp3
 RUSSOLO_SERENATA_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_09_Serenata%2C-1921.mp3
+NIGHTINGALE_URL = https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg
+NIGHTINGALE_SHA1 = 5de570b67b20f4e2932fb960b3e3b0f071981544
+NIGHTINGALE_OPEN_START = 0.250000
+NIGHTINGALE_OPEN_END = 23.504400
+NIGHTINGALE_SIGNATURE_START = 51.074600
+NIGHTINGALE_SIGNATURE_END = 58.493900
 
 
-.PHONY: all test android media-fetch media-test
+.PHONY: all test android media-fetch media-test nightingale-splice nightingale-splice-test
 all: test
 
 $(BUILD)/pcm-test: tests/pcm_test.c $(COMMON) $(HEADERS)
@@ -128,6 +134,18 @@ $(MEDIA_DIR)/russolo-corale.s16: $(MEDIA_DIR)/russolo-corale.mp3
 $(MEDIA_DIR)/russolo-serenata.s16: $(MEDIA_DIR)/russolo-serenata.mp3
 	ffmpeg -nostdin -loglevel error -y -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
+$(MEDIA_DIR)/nightingale-second.ogg:
+	mkdir -p $(@D)
+	curl --fail --location --retry 3 --output $@.tmp '$(NIGHTINGALE_URL)'
+	printf '%s  %s\n' '$(NIGHTINGALE_SHA1)' '$@.tmp' | sha1sum -c -
+	mv $@.tmp $@
+
+$(MEDIA_DIR)/nightingale-memory-name.flac: $(MEDIA_DIR)/nightingale-second.ogg
+	ffmpeg -nostdin -loglevel error -y -i $< -filter_complex "[0:a]atrim=start=$(NIGHTINGALE_OPEN_START):end=$(NIGHTINGALE_OPEN_END),asetpts=PTS-STARTPTS[a];[0:a]atrim=start=$(NIGHTINGALE_SIGNATURE_START):end=$(NIGHTINGALE_SIGNATURE_END),asetpts=PTS-STARTPTS[b];[a][b]concat=n=2:v=0:a=1[out]" -map '[out]' -c:a flac $@
+
+$(MEDIA_DIR)/nightingale-memory-name.s16: $(MEDIA_DIR)/nightingale-memory-name.flac
+	ffmpeg -nostdin -loglevel error -y -i $< -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
 MEDIA_CODE = \
 	fourier/pcm_block.c \
 	fourier/framing.c \
@@ -145,6 +163,13 @@ media-fetch: $(MEDIA_FIXTURES)
 
 media-test: media-fetch $(BUILD)/media-fixture-test
 	$(BUILD)/media-fixture-test $(MEDIA_FIXTURES)
+
+nightingale-splice: $(MEDIA_DIR)/nightingale-memory-name.flac
+
+nightingale-splice-test: $(MEDIA_DIR)/nightingale-memory-name.flac $(MEDIA_DIR)/nightingale-memory-name.s16 $(BUILD)/media-fixture-test
+	@duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 $(MEDIA_DIR)/nightingale-memory-name.flac); \
+	awk -v d="$duration" 'BEGIN { if (d < 30.65 || d > 30.70) { print "unexpected Nightingale splice duration: " d > "/dev/stderr"; exit 1 } }'
+	$(BUILD)/media-fixture-test $(MEDIA_DIR)/nightingale-memory-name.s16
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
