@@ -3,6 +3,7 @@
 
 #include <aaudio/AAudio.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
