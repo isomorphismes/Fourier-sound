@@ -17,6 +17,10 @@ ANDROID_JAR = $(ANDROID_HOME)/platforms/android-36/android.jar
 ANDROID_KEYSTORE ?= .test-signing/_/build/app/wegert-debug.keystore
 VERSION_CODE ?= 1
 
+SOUNDS_REPO ?= https://github.com/dilapidated-shed/sounds.git
+SOUNDS_REV ?= cde1a53a099d94881145498b4b906da81eba1cc5
+SOUNDS_DIR = $(BUILD)/sounds
+
 MEDIA_DIR = $(BUILD)/media
 MEDIA_RATE = 44100
 MEDIA_SECONDS = 8
@@ -27,13 +31,6 @@ MEDIA_FIXTURES = \
 	$(MEDIA_DIR)/bartok-sonatina.s16 \
 	$(MEDIA_DIR)/russolo-corale.s16 \
 	$(MEDIA_DIR)/russolo-serenata.s16
-
-THUNDER_URL = https://upload.wikimedia.org/wikipedia/commons/e/e7/Thunder_and_rain_on_a_v.ogg
-ICEBERG_CONTACT_URL = https://pmel.noaa.gov/acoustics/sounds/HarmonicTremor2006_215_09_20UsedOnBloopWebsite.wav
-DVORAK_URL = https://upload.wikimedia.org/wikipedia/commons/c/c3/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg
-BARTOK_URL = https://upload.wikimedia.org/wikipedia/commons/1/1c/Bartok_-_Sonatina.ogg
-RUSSOLO_CORALE_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_08_Corale-1921.mp3
-RUSSOLO_SERENATA_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_09_Serenata%2C-1921.mp3
 
 
 .PHONY: all test android media-fetch media-test
@@ -77,56 +74,36 @@ test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUI
 	$(BUILD)/framing-test
 
 
-$(MEDIA_DIR)/thunder-rain.ogg:
+$(SOUNDS_DIR)/.ready:
+	rm -rf $(SOUNDS_DIR).tmp $(SOUNDS_DIR)
+	git clone --quiet '$(SOUNDS_REPO)' $(SOUNDS_DIR).tmp
+	git -C $(SOUNDS_DIR).tmp checkout --quiet --detach '$(SOUNDS_REV)'
+	mv $(SOUNDS_DIR).tmp $(SOUNDS_DIR)
+	touch $@
+
+$(MEDIA_DIR)/thunder-rain.s16: $(SOUNDS_DIR)/.ready
 	mkdir -p $(@D)
-	curl --fail --location --retry 3 --output $@.tmp '$(THUNDER_URL)'
-	printf '%s  %s\n' '9854ac50a6645c6f4947464ae16b3b587980a18d' '$@.tmp' | sha1sum -c -
-	mv $@.tmp $@
+	source=$$(awk -F '\t' '$$1 == "thunder-rain-veranda" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
-$(MEDIA_DIR)/iceberg-contact.wav:
+$(MEDIA_DIR)/iceberg-contact.s16: $(SOUNDS_DIR)/.ready
 	mkdir -p $(@D)
-	curl --fail --location --retry 3 --output $@.tmp '$(ICEBERG_CONTACT_URL)'
-	mv $@.tmp $@
+	source=$$(awk -F '\t' '$$1 == "noaa-iceberg-harmonic-tremor" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
-$(MEDIA_DIR)/dvorak-largo.ogg:
+$(MEDIA_DIR)/dvorak-largo.s16: $(SOUNDS_DIR)/.ready
 	mkdir -p $(@D)
-	curl --fail --location --retry 3 --output $@.tmp '$(DVORAK_URL)'
-	printf '%s  %s\n' '88f4ba157183fc1f1f27fcbb8ffe10c1691d9824' '$@.tmp' | sha1sum -c -
-	mv $@.tmp $@
+	source=$$(awk -F '\t' '$$1 == "dvorak-new-world-largo" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -ss 60 -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
-$(MEDIA_DIR)/bartok-sonatina.ogg:
+$(MEDIA_DIR)/bartok-sonatina.s16: $(SOUNDS_DIR)/.ready
 	mkdir -p $(@D)
-	curl --fail --location --retry 3 --output $@.tmp '$(BARTOK_URL)'
-	printf '%s  %s\n' 'a6b3b28925339e2f5aab188e030c14ca8b4e2682' '$@.tmp' | sha1sum -c -
-	mv $@.tmp $@
+	source=$$(awk -F '\t' '$$1 == "bartok-sonatina" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -ss 10 -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
-$(MEDIA_DIR)/russolo-corale.mp3:
+$(MEDIA_DIR)/russolo-corale.s16: $(SOUNDS_DIR)/.ready
 	mkdir -p $(@D)
-	curl --fail --location --retry 3 --output $@.tmp '$(RUSSOLO_CORALE_URL)'
-	mv $@.tmp $@
+	source=$$(awk -F '\t' '$$1 == "russolo-corale" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
-$(MEDIA_DIR)/russolo-serenata.mp3:
+$(MEDIA_DIR)/russolo-serenata.s16: $(SOUNDS_DIR)/.ready
 	mkdir -p $(@D)
-	curl --fail --location --retry 3 --output $@.tmp '$(RUSSOLO_SERENATA_URL)'
-	mv $@.tmp $@
-
-$(MEDIA_DIR)/thunder-rain.s16: $(MEDIA_DIR)/thunder-rain.ogg
-	ffmpeg -nostdin -loglevel error -y -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
-
-$(MEDIA_DIR)/iceberg-contact.s16: $(MEDIA_DIR)/iceberg-contact.wav
-	ffmpeg -nostdin -loglevel error -y -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
-
-$(MEDIA_DIR)/dvorak-largo.s16: $(MEDIA_DIR)/dvorak-largo.ogg
-	ffmpeg -nostdin -loglevel error -y -ss 60 -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
-
-$(MEDIA_DIR)/bartok-sonatina.s16: $(MEDIA_DIR)/bartok-sonatina.ogg
-	ffmpeg -nostdin -loglevel error -y -ss 10 -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
-
-$(MEDIA_DIR)/russolo-corale.s16: $(MEDIA_DIR)/russolo-corale.mp3
-	ffmpeg -nostdin -loglevel error -y -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
-
-$(MEDIA_DIR)/russolo-serenata.s16: $(MEDIA_DIR)/russolo-serenata.mp3
-	ffmpeg -nostdin -loglevel error -y -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+	source=$$(awk -F '\t' '$$1 == "russolo-serenata" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
 MEDIA_CODE = \
 	fourier/pcm_block.c \
