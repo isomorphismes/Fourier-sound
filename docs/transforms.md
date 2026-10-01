@@ -31,7 +31,9 @@ FFT implementation.
 
 `tests/fft_test.c` compares the FFT coefficient-by-coefficient against the
 direct DFT for impulses, shifted impulses, constants, mixed harmonics, and
-deterministic pseudo-random signals through 256 samples. It also checks invalid
+deterministic pseudo-random signals through 256 samples. A separate 4096-sample
+block checks analytically known harmonic coefficients, conjugate symmetry, and
+the Parseval identity under the chosen 1/N normalization. It also checks invalid
 sizes and nonfinite input.
 
 The FFT is now suitable as the first fast backend, but it is not yet selected by
