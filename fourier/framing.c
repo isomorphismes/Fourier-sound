@@ -1,5 +1,6 @@
 #include "framing.h"
 
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
@@ -9,6 +10,11 @@ static bool finite_frame(const float *frame, size_t count)
     for (size_t index = 0U; index < count; ++index)
         if (!isfinite(frame[index])) return false;
     return true;
+}
+
+static bool representable_float(double value)
+{
+    return isfinite(value) && fabs(value) <= (double)FLT_MAX;
 }
 
 bool fourier_frame_copy(const float *samples, size_t sample_count,
@@ -36,6 +42,9 @@ bool fourier_frame_remove_mean(float *frame, size_t count)
     mean /= (double)count;
 
     for (size_t index = 0U; index < count; ++index)
+        if (!representable_float((double)frame[index] - mean)) return false;
+
+    for (size_t index = 0U; index < count; ++index)
         frame[index] = (float)((double)frame[index] - mean);
     return true;
 }
@@ -44,12 +53,11 @@ bool fourier_frame_scale(float *frame, size_t count, double gain)
 {
     if (!finite_frame(frame, count) || !isfinite(gain)) return false;
 
-    for (size_t index = 0U; index < count; ++index) {
-        double value = (double)frame[index] * gain;
-        if (!isfinite(value)) return false;
-        frame[index] = (float)value;
-        if (!isfinite(frame[index])) return false;
-    }
+    for (size_t index = 0U; index < count; ++index)
+        if (!representable_float((double)frame[index] * gain)) return false;
+
+    for (size_t index = 0U; index < count; ++index)
+        frame[index] = (float)((double)frame[index] * gain);
     return true;
 }
 
