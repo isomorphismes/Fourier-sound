@@ -35,11 +35,16 @@ $(BUILD)/speaker-input-test: tests/speaker_input_test.c audio/interface/speaker_
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/speaker_input_test.c audio/interface/speaker_input.c -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test
+$(BUILD)/render-test: tests/render_test.c $(RENDER) $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/render_test.c $(RENDER) -lm -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
 	$(BUILD)/speaker-input-test
+	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
