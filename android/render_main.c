@@ -59,6 +59,7 @@ static void finish(struct application *a, const char *status)
 {
     LOG("DISPLAY_RESULT status=%s width=%d height=%d",
         status, a->width, a->height);
+    a->presented = false;
     a->finished = true;
     ANativeActivity_finish(a->app->activity);
 }
@@ -74,9 +75,12 @@ static void present(struct application *a)
         return;
     }
 
+    if ((size_t)width > SIZE_MAX / (size_t)height) {
+        finish(a, "WINDOW_SIZE_OVERFLOW");
+        return;
+    }
     size_t pixel_count = (size_t)width * (size_t)height;
-    if ((size_t)width > SIZE_MAX / (size_t)height ||
-        pixel_count > SIZE_MAX / sizeof(struct rgb24)) {
+    if (pixel_count > SIZE_MAX / sizeof(struct rgb24)) {
         finish(a, "WINDOW_SIZE_OVERFLOW");
         return;
     }
