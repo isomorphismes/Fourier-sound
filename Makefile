@@ -67,7 +67,7 @@ $(BUILD)/framing-test: tests/framing_test.c fourier/framing.c fourier/fft.c $(HE
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/framing_test.c fourier/framing.c fourier/fft.c -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test $(BUILD)/media-fixture-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
