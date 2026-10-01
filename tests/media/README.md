@@ -2,7 +2,7 @@
 
 `make media-test` runs real environmental and musical audio through the same plain-C boundaries used by Fourier-sound. The normal `make test` target remains deterministic and offline.
 
-The recording corpus is owned by `dilapidated-shed/sounds`. Fourier-sound pins one exact `sounds` revision in `SOUNDS_REV`, checks out that revision under `build/sounds`, and asks that repository to materialize its redistributable originals. Fourier-sound does not maintain its own copy of recording URLs, rights notes, checksums, or source-audio catalogue.
+The recording corpus is owned by `dilapidated-shed/sounds`. Fourier-sound pins one exact `sounds` revision in `SOUNDS_REV`, checks out that revision under `build/sounds`, including the redistributable originals committed there. Fourier-sound does not maintain its own copy of recording URLs, rights notes, checksums, or source-audio catalogue.
 
 The Fourier test then derives eight-second mono 44.1 kHz signed-16 PCM files under `build/media`. Those PCM files are build artifacts, not a second corpus.
 
@@ -35,4 +35,4 @@ Run:
 make media-test
 ```
 
-The optional target requires `git`, `curl`, `ffmpeg`, `awk`, and `sha1sum`. Everything downloaded or derived remains under `build/`.
+The optional target requires `git`, `ffmpeg`, and `awk`. Everything checked out or derived remains under `build/`.
