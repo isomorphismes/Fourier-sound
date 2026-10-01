@@ -200,7 +200,7 @@ static void test_fixture(const char *path)
     speaker_roundtrip(loudest);
 
     assert(fourier_frame_remove_mean(analysis, WINDOW));
-    assert(fourier_frame_apply_hann(analysis, WINDOW));
+    assert(fourier_frame_apply_hann_periodic(analysis, WINDOW));
 
     struct complex_value coefficients[WINDOW];
     assert(fourier_fft_real_radix2(analysis, WINDOW,

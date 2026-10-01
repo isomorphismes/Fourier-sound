@@ -1,52 +1,35 @@
 # Framing primitives
 
 Acquisition produces raw samples. Framing chooses the finite observation passed
-to a decomposition.
-
-The first implementation keeps those choices explicit instead of hiding them
-inside an FFT call.
+to a decomposition. The implementation keeps those choices explicit instead
+of hiding them inside an FFT call.
 
 ## Copy and overlap
 
 `fourier_frame_copy` selects
-
-```text
-samples[start .. start + frame_count)
-```
-
-into caller-owned working storage. It never changes the raw sample buffer.
-
-Overlap is therefore not a mode inside the framing function. If successive
-frames start at
-
-```text
-start_m = m * hop_count
-```
-
-then `hop_count < frame_count` gives overlap and
-`hop_count == frame_count` gives adjacent frames.
+`samples[start .. start + frame_count)` into caller-owned working storage and
+never changes the raw sample buffer. Successive starts separated by
+`hop_count < frame_count` therefore give overlap without a separate overlap
+mode.
 
 ## Optional operations
 
-The copied frame can then independently receive:
+The copied frame can independently receive mean removal, explicit gain, RMS
+measurement, a periodic Hann window, or a symmetric Hann window. Doing nothing
+gives a rectangular, mean-preserving, unit-gain frame.
 
-- `fourier_frame_remove_mean`;
-- `fourier_frame_scale` with an explicitly supplied gain;
-- `fourier_frame_apply_hann`;
-- `fourier_frame_rms` for measurement or an experiment's own normalization
-  policy.
+The Hann convention is part of the function name rather than hidden policy:
 
-Doing nothing gives a rectangular, mean-preserving, unit-gain frame.
+- periodic: `0.5 - 0.5 cos(2 pi n / N)`, natural when the frame is treated as
+  one period by a DFT/FFT;
+- symmetric: denominator `N-1`, giving matching zero endpoints.
 
-This intentionally does not choose an automatic voice normalization rule.
+Singleton frames are unchanged by either convention.
+
+Mean removal and gain are transactional: if a result cannot be represented as
+finite `float`, the operation fails without partially mutating the frame.
+
+This layer deliberately does not choose automatic voice normalization.
 Maresh's observation that the visualization needed response tuning makes that
-an experiment-level question; the framing layer supplies the measurements and
-operations without deciding the target behavior.
-
-Sample-rate conversion is not implemented here. Channel selection already
-happens at the PCM-to-mono boundary and resampling should remain a separate
-operation if an experiment needs it.
-
-The tests also compose mean removal directly with the radix-2 FFT so this layer
-is checked as part of the mathematical pipeline rather than only as isolated
-array utilities.
+an experiment-level question. Sample-rate conversion is also separate; channel
+selection already happens at the PCM-to-mono boundary.

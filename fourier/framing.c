@@ -61,19 +61,29 @@ bool fourier_frame_scale(float *frame, size_t count, double gain)
     return true;
 }
 
-bool fourier_frame_apply_hann(float *frame, size_t count)
+static bool apply_hann(float *frame, size_t count, double denominator)
 {
     if (!finite_frame(frame, count)) return false;
     if (count == 1U) return true;
 
     const double tau = 6.283185307179586476925286766559;
-    double denominator = (double)(count - 1U);
     for (size_t index = 0U; index < count; ++index) {
         double weight =
             0.5 - 0.5 * cos(tau * (double)index / denominator);
         frame[index] = (float)((double)frame[index] * weight);
     }
     return true;
+}
+
+bool fourier_frame_apply_hann_periodic(float *frame, size_t count)
+{
+    return apply_hann(frame, count, (double)count);
+}
+
+bool fourier_frame_apply_hann_symmetric(float *frame, size_t count)
+{
+    double denominator = count > 1U ? (double)(count - 1U) : 1.0;
+    return apply_hann(frame, count, denominator);
 }
 
 bool fourier_frame_rms(const float *frame, size_t count, double *rms)
