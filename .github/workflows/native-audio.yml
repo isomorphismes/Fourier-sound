@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: validation-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   host:
     runs-on: ubuntu-24.04
