@@ -44,13 +44,18 @@ $(BUILD)/rgb24-rgba8888-test: tests/rgb24_rgba8888_test.c render/rgb24_rgba8888.
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/rgb24_rgba8888_test.c render/rgb24_rgba8888.c -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/rgb24-rgba8888-test
+$(BUILD)/native-window-output-test: tests/native_window_output_test.c tests/fake/android/native_window.h render/android/native_window_output.c render/rgb24_rgba8888.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -Itests/fake $(INCLUDES) tests/native_window_output_test.c render/android/native_window_output.c render/rgb24_rgba8888.c -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/rgb24-rgba8888-test $(BUILD)/native-window-output-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
 	$(BUILD)/speaker-input-test
 	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
 	$(BUILD)/rgb24-rgba8888-test
+	$(BUILD)/native-window-output-test
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
