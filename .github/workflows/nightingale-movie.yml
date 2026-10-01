@@ -1,0 +1,87 @@
+name: Nightingale Fourier Voice movie
+
+on:
+  push:
+    branches:
+      - experiments/nightingale-fourier-movie
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Reconstruct verified Florence Nightingale splice
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p build/media build/nightingale-frames
+          curl --fail --location --retry 3 \
+            --output build/media/nightingale-second.ogg \
+            'https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg'
+          printf '%s  %s\n' \
+            '5de570b67b20f4e2932fb960b3e3b0f071981544' \
+            'build/media/nightingale-second.ogg' | sha1sum -c -
+          ffmpeg -nostdin -loglevel error -y \
+            -i build/media/nightingale-second.ogg \
+            -filter_complex "[0:a]atrim=start=0.250000:end=23.504400,asetpts=PTS-STARTPTS[a];[0:a]atrim=start=51.074600:end=58.493900,asetpts=PTS-STARTPTS[b];[a][b]concat=n=2:v=0:a=1[out]" \
+            -map '[out]' -c:a flac build/media/nightingale-memory-name.flac
+          ffmpeg -nostdin -loglevel error -y \
+            -i build/media/nightingale-memory-name.flac \
+            -ac 1 -ar 48000 -f s16le build/media/nightingale-memory-name.s16
+          ffprobe -v error -show_entries format=duration \
+            -of default=nw=1:nk=1 build/media/nightingale-memory-name.flac
+
+      - name: Build exact current prototype renderer
+        run: |
+          cc -std=c17 -O3 -Wall -Wextra -Werror -Wpedantic -Wshadow \
+            -Ifourier -Imath -Irender \
+            tools/nightingale_movie.c \
+            fourier/dft.c fourier/complex_field.c render/wegert.c render/ppm.c \
+            -lm -o build/nightingale-movie-render
+
+      - name: Render still sequence
+        run: |
+          build/nightingale-movie-render \
+            build/media/nightingale-memory-name.s16 \
+            build/nightingale-frames \
+            | tee build/nightingale-render.txt
+
+      - name: Assemble MP4 with Nightingale audio
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ffmpeg -nostdin -loglevel error -y \
+            -framerate 5 -start_number 0 \
+            -i build/nightingale-frames/frame-%06d.ppm \
+            -i build/media/nightingale-memory-name.flac \
+            -vf 'scale=576:1152:flags=bilinear,format=yuv420p' \
+            -c:v libx264 -preset medium -crf 18 \
+            -c:a aac -b:a 128k \
+            -shortest -movflags +faststart \
+            build/florence-nightingale-fourier-voice.mp4
+          ffprobe -v error -show_entries \
+            format=duration,size:stream=codec_name,width,height,r_frame_rate \
+            -of json build/florence-nightingale-fourier-voice.mp4 \
+            > build/florence-nightingale-fourier-voice.json
+          sha256sum build/florence-nightingale-fourier-voice.mp4 \
+            > build/florence-nightingale-fourier-voice.mp4.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: florence-nightingale-fourier-voice
+          path: |
+            build/florence-nightingale-fourier-voice.mp4
+            build/florence-nightingale-fourier-voice.mp4.sha256
+            build/florence-nightingale-fourier-voice.json
+            build/nightingale-render.txt
+          if-no-files-found: error
