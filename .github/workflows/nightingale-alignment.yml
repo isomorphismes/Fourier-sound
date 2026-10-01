@@ -38,6 +38,29 @@ jobs:
               -f null - 2>&1 | grep -E 'silence_(start|end|duration)' || true
           done | tee build/nightingale/silence-boundaries.txt
 
+      - name: Cross-check phrase timing with speech recognition
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet openai-whisper
+          whisper build/nightingale/source.ogg \
+            --model tiny.en \
+            --language English \
+            --word_timestamps True \
+            --initial_prompt 'When I am no longer even a memory, just a name, I hope my voice may perpetuate the great work of my life. God bless my dear old comrades of Balaclava and bring them safe to shore. Florence Nightingale.' \
+            --output_format json \
+            --output_dir build/nightingale
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = next(Path("build/nightingale").glob("*.json"))
+          data = json.loads(path.read_text())
+          for segment in data.get("segments", []):
+              for word in segment.get("words", []):
+                  print(f'{word["start"]:8.3f} {word["end"]:8.3f} {word["word"]}')
+          PY
+
       - name: Make inspection images
         shell: bash
         run: |
@@ -57,3 +80,4 @@ jobs:
             build/nightingale/waveform.png
             build/nightingale/spectrum.png
             build/nightingale/silence-boundaries.txt
+            build/nightingale/*.json
