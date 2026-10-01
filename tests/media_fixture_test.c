@@ -16,12 +16,11 @@
 
 #define SAMPLE_RATE 44100U
 #define WINDOW 4096U
-#define DENSE_TERMS 64U
-#define SPARSE_TERMS 12U
+#define TERMS 12U
 #define IMAGE_SIDE 128U
 #define IMAGE_PIXELS (IMAGE_SIDE * IMAGE_SIDE)
 
-static const size_t dyadic_exponents[SPARSE_TERMS] = {
+static const size_t dyadic_exponents[TERMS] = {
     0U, 1U, 2U, 4U, 8U, 16U,
     32U, 64U, 128U, 256U, 512U, 1024U
 };
@@ -131,11 +130,11 @@ static size_t compare_constructions(const char *source_path,
             struct complex_value q = {x, y};
 
             struct complex_value dense_value = fourier_polynomial_value(
-                coefficients, WINDOW, DENSE_TERMS, q);
+                coefficients, WINDOW, TERMS, q);
             struct complex_value dyadic_value;
             assert(fourier_sparse_series_value(
                 coefficients, WINDOW, dyadic_exponents,
-                SPARSE_TERMS, q, &dyadic_value));
+                TERMS, q, &dyadic_value));
 
             assert(isfinite(dense_value.real) && isfinite(dense_value.imaginary));
             assert(isfinite(dyadic_value.real) && isfinite(dyadic_value.imaginary));
