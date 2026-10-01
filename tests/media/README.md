@@ -24,7 +24,16 @@ Sources:
 
 PennSound is useful as a discovery archive, but it is not generally a public-domain corpus. Its site-wide notices normally limit recordings to noncommercial and educational use and retain rights in the author or estate. Historical items therefore need individual rights checking. The Russolo recordings above are included because Public Domain Review independently identifies `Corale` and `Serenata` as public-domain audio and points to the Internet Archive copies.
 
-Chris Watson's Antarctic material on Touch is also a reference rather than an automated fixture. Touch Radio 49, `A Journey South` (2010), contains Watson's Antarctic hydrophone recordings, including the characteristic creaking and groaning ice: https://touchradio.org.uk/touch_radio_49_chris_watson.html . TouchRadio makes the MP3 free to listen/download but states that Touch content is published by Touch Music or is public domain and separately marks the site all rights reserved. That is not enough to establish this Watson recording itself as public domain. Keep it as a listening/comparison target unless Touch/Watson grants reuse permission. The NOAA iceberg-contact recording fills the automated ice-test role without copying it.
+Chris Watson's Antarctic material on Touch is also a reference rather than an automated fixture. TouchRadio makes some material free to listen/download, but that does not by itself establish the recordings as public domain. Keep these as listening/comparison targets unless Touch/Watson grants reuse permission. The NOAA iceberg-contact recording fills the automated ice-test role without copying them.
+
+### Chris Watson / Touch reference links
+
+- Touch Radio 49 — Chris Watson, *A Journey South* (2010), the 50-minute South Pole / *Frozen Planet* report with Antarctic field and hydrophone recordings: https://touchradio.org.uk/touch_radio_49_chris_watson.html
+- Touch 33 copy of the *A Journey South* entry, including its playback link: https://touch33.net/news/touch_radio_49_chris_watson.html
+- Touch 30 — *A Journey South*, describing Watson's Antarctica recordings of wildlife, water and the groaning of a moving glacier: https://touch33.net/touch-30
+- Chris Watson, *Weather Report* — `Vatnajökull`, an 18-minute work following Icelandic glacier ice into the Norwegian Sea: https://touch33.net/catalogue/to47-chris-watson-weather-report.html
+- Chris Watson, *Planet Ocean* — includes ice recordings from Ross Island, Antarctica and below the Arctic surface: https://touch33.net/catalogue/v33-90-chris-watson-planet-ocean-2.html
+- Touch's Chris Watson review/archive page, which also collects descriptions of his hydrophone, glacier, weather and wildlife recordings: https://www.touch33.net/archives/reviews_chriswatson/
 
 ## What the test checks
 
