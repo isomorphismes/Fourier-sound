@@ -33,7 +33,8 @@ ICEBERG_CONTACT_URL = https://pmel.noaa.gov/acoustics/sounds/HarmonicTremor2006_
 DVORAK_URL = https://upload.wikimedia.org/wikipedia/commons/c/c3/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg
 BARTOK_URL = https://upload.wikimedia.org/wikipedia/commons/1/1c/Bartok_-_Sonatina.ogg
 RUSSOLO_CORALE_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_08_Corale-1921.mp3
-RUSSOLO_SERENATA_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_09_Serenata%2C-1921.mp3\nNIGHTINGALE_URL = https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg
+RUSSOLO_SERENATA_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_09_Serenata%2C-1921.mp3
+NIGHTINGALE_URL = https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg
 
 
 .PHONY: all test android media-fetch media-test nightingale-static-overlay
@@ -67,7 +68,11 @@ $(BUILD)/framing-test: tests/framing_test.c fourier/framing.c fourier/fft.c $(HE
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/framing_test.c fourier/framing.c fourier/fft.c -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test $(BUILD)/media-fixture-test
+$(BUILD)/cylinder-static-test: tests/cylinder_static_test.c experiments/cylinder_static.c experiments/cylinder_static.h fourier/framing.c fourier/fft.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/cylinder_static_test.c experiments/cylinder_static.c fourier/framing.c fourier/fft.c -lm -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test $(BUILD)/cylinder-static-test $(BUILD)/media-fixture-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
@@ -75,6 +80,7 @@ test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUI
 	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
 	$(BUILD)/fft-test
 	$(BUILD)/framing-test
+	$(BUILD)/cylinder-static-test
 
 
 $(MEDIA_DIR)/thunder-rain.ogg:
@@ -128,6 +134,16 @@ $(MEDIA_DIR)/russolo-corale.s16: $(MEDIA_DIR)/russolo-corale.mp3
 $(MEDIA_DIR)/russolo-serenata.s16: $(MEDIA_DIR)/russolo-serenata.mp3
 	ffmpeg -nostdin -loglevel error -y -i $< -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
 
+
+$(MEDIA_DIR)/nightingale.ogg:
+	mkdir -p $(@D)
+	curl --fail --location --retry 3 --output $@.tmp '$(NIGHTINGALE_URL)'
+	printf '%s  %s\n' '5de570b67b20f4e2932fb960b3e3b0f071981544' '$@.tmp' | sha1sum -c -
+	mv $@.tmp $@
+
+$(MEDIA_DIR)/nightingale.s16: $(MEDIA_DIR)/nightingale.ogg
+	ffmpeg -nostdin -loglevel error -y -i $< -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
 MEDIA_CODE = \
 	fourier/pcm_block.c \
 	fourier/framing.c \
@@ -145,6 +161,13 @@ media-fetch: $(MEDIA_FIXTURES)
 
 media-test: media-fetch $(BUILD)/media-fixture-test
 	$(BUILD)/media-fixture-test $(MEDIA_FIXTURES)
+
+$(BUILD)/nightingale-static-overlay: experiments/nightingale_static_overlay.c experiments/cylinder_static.c $(MEDIA_CODE) $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) experiments/nightingale_static_overlay.c experiments/cylinder_static.c $(MEDIA_CODE) -lm -o $@
+
+nightingale-static-overlay: $(MEDIA_DIR)/nightingale.s16 $(BUILD)/nightingale-static-overlay
+	$(BUILD)/nightingale-static-overlay $(MEDIA_DIR)/nightingale.s16 $(MEDIA_DIR)/nightingale
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
