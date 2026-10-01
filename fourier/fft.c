@@ -36,6 +36,8 @@ bool fourier_fft_real_radix2(const float *samples, size_t sample_count,
             (struct complex_value){(double)samples[index], 0.0};
     }
 
+    if (sample_count == 1U) return true;
+
     const double tau = 6.283185307179586476925286766559;
     for (size_t length = 2U; ; length <<= 1U) {
         double angle = -tau / (double)length;
