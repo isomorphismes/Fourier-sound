@@ -4,10 +4,14 @@ on:
   push:
     branches:
       - experiments/nightingale-fourier-movie
+    paths-ignore:
+      - 'media/florence-nightingale-fourier-voice.mp4'
+      - 'media/florence-nightingale-fourier-voice.mp4.sha256'
+      - 'media/florence-nightingale-fourier-voice.json'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   render:
@@ -89,3 +93,23 @@ jobs:
             build/florence-nightingale-fourier-voice.json
             build/nightingale-render.txt
           if-no-files-found: error
+
+      - name: Publish movie on experiment branch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p media
+          cp build/florence-nightingale-fourier-voice.mp4 media/
+          cp build/florence-nightingale-fourier-voice.mp4.sha256 media/
+          cp build/florence-nightingale-fourier-voice.json media/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            media/florence-nightingale-fourier-voice.mp4 \
+            media/florence-nightingale-fourier-voice.mp4.sha256 \
+            media/florence-nightingale-fourier-voice.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Publish Florence Nightingale Fourier Voice movie [skip ci]'
+          git push origin HEAD:experiments/nightingale-fourier-movie
