@@ -1,0 +1,32 @@
+#!/usr/bin/env grease
+set -o errexit
+set -o pipefail
+
+if (len(ARGV) !== 3) {
+  printf '\033[31mFAIL\033[0m usage: grease miro-a1-render.grease SERIAL /absolute/fourier-render-window-armeabi-v7a.apk SHA256\n'
+  exit 2
+}
+var serial = ARGV[0]
+var apk = ARGV[1]
+var digest = ARGV[2]
+var adb = $(command -v adb)
+var absolute_apk = $(realpath "$apk")
+
+if (adb === '' or serial === '' or apk !== absolute_apk) {
+  printf '\033[31mFAIL\033[0m explicit adb device and absolute APK path required\n'
+  exit 2
+}
+
+var model = $($adb -s "$serial" shell getprop ro.product.model | tr -d '\r')
+var abi = $($adb -s "$serial" shell getprop ro.product.cpu.abi | tr -d '\r')
+if ((model !== 'MIRO A1' and model !== 'MIRO_A1') or abi !== 'armeabi-v7a') {
+  printf '\033[31mFAIL\033[0m expected MIRO A1 armeabi-v7a, got %s %s\n' "$model" "$abi"
+  exit 2
+}
+
+printf '%s  %s\n' "$digest" "$apk" | sha256sum -c -
+$adb -s "$serial" install -r "$apk"
+$adb -s "$serial" shell am force-stop org.isomorphismes.fouriersound.render
+printf '\033[36mRUN\033[0m expect a Wegert portrait of z^3-1 for five seconds\n'
+$adb -s "$serial" shell am start -W -n org.isomorphismes.fouriersound.render/android.app.NativeActivity
+$adb -s "$serial" logcat -v threadtime -s FourierRender:I '*:S'

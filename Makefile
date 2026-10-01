@@ -4,9 +4,9 @@ BUILD ?= build
 CC ?= cc
 CFLAGS ?= -O2 -g
 WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
-INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Iacceptance
+INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Irender/android -Iacceptance
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
-HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h acceptance/*.h)
+HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h render/android/*.h acceptance/*.h)
 REFERENCE = fourier/dft.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/ppm.c
 ANDROID_HOME ?= /opt/android-sdk
 NDK ?= $(ANDROID_HOME)/ndk/27.2.12479018
@@ -48,7 +48,15 @@ $(BUILD)/framing-test: tests/framing_test.c fourier/framing.c fourier/fft.c $(HE
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/framing_test.c fourier/framing.c fourier/fft.c -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test
+$(BUILD)/rgb24-rgba8888-test: tests/rgb24_rgba8888_test.c render/rgb24_rgba8888.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/rgb24_rgba8888_test.c render/rgb24_rgba8888.c -o $@
+
+$(BUILD)/native-window-output-test: tests/native_window_output_test.c tests/fake/android/native_window.h render/android/native_window_output.c render/rgb24_rgba8888.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -Itests/fake $(INCLUDES) tests/native_window_output_test.c render/android/native_window_output.c render/rgb24_rgba8888.c -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test $(BUILD)/rgb24-rgba8888-test $(BUILD)/native-window-output-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
@@ -56,6 +64,8 @@ test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUI
 	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
 	$(BUILD)/fft-test
 	$(BUILD)/framing-test
+	$(BUILD)/rgb24-rgba8888-test
+	$(BUILD)/native-window-output-test
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
@@ -63,6 +73,10 @@ $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -DANativeActivity_onCreate=fourier_glue_on_create -I$(GLUE) -c $$< -o $$@
 
 $(BUILD)/android/$(1)/speaker_glue.o: $(GLUE)/android_native_app_glue.c
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -I$(GLUE) -c $$< -o $$@
+
+$(BUILD)/android/$(1)/render_glue.o: $(GLUE)/android_native_app_glue.c
 	mkdir -p $$(@D)
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -I$(GLUE) -c $$< -o $$@
 
@@ -74,6 +88,10 @@ $(BUILD)/android/$(1)/libfourier_render_ref.so: $(REFERENCE) $(HEADERS)
 $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so: android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(HEADERS) $(BUILD)/android/$(1)/glue.o
 	mkdir -p $$(@D)
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $$@
+
+$(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so: android/render_main.c render/android/native_window_output.c render/rgb24_rgba8888.c fourier/complex_field.c render/wegert.c $(HEADERS) $(BUILD)/android/$(1)/render_glue.o
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/render_main.c render/android/native_window_output.c render/rgb24_rgba8888.c fourier/complex_field.c render/wegert.c $(BUILD)/android/$(1)/render_glue.o -landroid -llog -lm -o $$@
 
 $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so: android/speaker_main.c audio/android/aaudio_output.c audio/interface/speaker_input.c audio/interface/audio_result.c $(HEADERS) $(BUILD)/android/$(1)/speaker_glue.o
 	mkdir -p $$(@D)
@@ -90,6 +108,19 @@ $(BUILD)/fourier-microphone-$(1).apk: $(BUILD)/android/$(1)/staging/lib/$(1)/lib
 	unzip -Z1 $$@ > $(BUILD)/android/$(1)/entries.txt
 	! grep -E '(^|/)classes[0-9]*\.dex$$$$' $(BUILD)/android/$(1)/entries.txt
 	$(TOOLCHAIN)/llvm-readelf -h $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so
+	sha256sum $$@ > $$@.sha256
+
+$(BUILD)/fourier-render-window-$(1).apk: $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so android/RenderManifest.xml
+	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/RenderManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code $(VERSION_CODE) --version-name 0.1.0 -o $(BUILD)/android/$(1)/render-unsigned.apk
+	cd $(BUILD)/android/$(1)/render-staging && zip -0 -q -r ../render-unsigned.apk lib
+	$(TOOLS)/zipalign -f -P 16 4 $(BUILD)/android/$(1)/render-unsigned.apk $(BUILD)/android/$(1)/render-aligned.apk
+	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $$@ $(BUILD)/android/$(1)/render-aligned.apk
+	$(TOOLS)/apksigner verify --verbose --print-certs $$@ > $(BUILD)/android/$(1)/render-signer.txt
+	grep -Fq 'Signer #1 certificate SHA-256 digest: de9b1d47c5a65e6d46a204b79dd9ee566b9d3c9832ba81ebc4213d3392e92ff9' $(BUILD)/android/$(1)/render-signer.txt
+	$(TOOLS)/zipalign -c -P 16 4 $$@
+	unzip -Z1 $$@ > $(BUILD)/android/$(1)/render-entries.txt
+	! grep -E '(^|/)classes[0-9]*\.dex$$$$' $(BUILD)/android/$(1)/render-entries.txt
+	$(TOOLCHAIN)/llvm-readelf -h $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so
 	sha256sum $$@ > $$@.sha256
 
 $(BUILD)/fourier-speaker-$(1).apk: $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so android/SpeakerManifest.xml
@@ -117,6 +148,9 @@ android: \
 	$(BUILD)/fourier-speaker-armeabi-v7a.apk \
 	$(BUILD)/fourier-speaker-arm64-v8a.apk \
 	$(BUILD)/fourier-speaker-x86_64.apk \
+	$(BUILD)/fourier-render-window-armeabi-v7a.apk \
+	$(BUILD)/fourier-render-window-arm64-v8a.apk \
+	$(BUILD)/fourier-render-window-x86_64.apk \
 	$(BUILD)/android/armeabi-v7a/libfourier_render_ref.so \
 	$(BUILD)/android/arm64-v8a/libfourier_render_ref.so \
 	$(BUILD)/android/x86_64/libfourier_render_ref.so
