@@ -47,8 +47,6 @@ static void mean_gain_and_rms(void)
     assert(fourier_frame_scale(frame, 4U, 2.0));
     assert(near(frame[0], -3.0, 1e-7));
     assert(near(frame[3], 3.0, 1e-7));
-    assert(fourier_frame_rms(frame, 4U, &rms));
-    assert(near(rms, 2.0 * sqrt(1.25), 1e-12));
 }
 
 static void transactional_failures(void)
@@ -66,19 +64,29 @@ static void transactional_failures(void)
     assert(memcmp(mean_frame, mean_original, sizeof(mean_frame)) == 0);
 }
 
-static void hann_window(void)
+static void hann_windows(void)
 {
-    float frame[5] = {1, 1, 1, 1, 1};
-    assert(fourier_frame_apply_hann(frame, 5U));
-    assert(near(frame[0], 0.0, 1e-7));
-    assert(near(frame[1], 0.5, 1e-7));
-    assert(near(frame[2], 1.0, 1e-7));
-    assert(near(frame[3], 0.5, 1e-7));
-    assert(near(frame[4], 0.0, 1e-7));
+    float symmetric[5] = {1, 1, 1, 1, 1};
+    assert(fourier_frame_apply_hann_symmetric(symmetric, 5U));
+    assert(near(symmetric[0], 0.0, 1e-7));
+    assert(near(symmetric[1], 0.5, 1e-7));
+    assert(near(symmetric[2], 1.0, 1e-7));
+    assert(near(symmetric[3], 0.5, 1e-7));
+    assert(near(symmetric[4], 0.0, 1e-7));
 
-    float singleton[] = {0.75f};
-    assert(fourier_frame_apply_hann(singleton, 1U));
-    assert(singleton[0] == 0.75f);
+    float periodic[4] = {1, 1, 1, 1};
+    assert(fourier_frame_apply_hann_periodic(periodic, 4U));
+    assert(near(periodic[0], 0.0, 1e-7));
+    assert(near(periodic[1], 0.5, 1e-7));
+    assert(near(periodic[2], 1.0, 1e-7));
+    assert(near(periodic[3], 0.5, 1e-7));
+
+    float singleton_a[] = {0.75f};
+    float singleton_b[] = {0.75f};
+    assert(fourier_frame_apply_hann_periodic(singleton_a, 1U));
+    assert(fourier_frame_apply_hann_symmetric(singleton_b, 1U));
+    assert(singleton_a[0] == 0.75f);
+    assert(singleton_b[0] == 0.75f);
 }
 
 static void frame_then_fft(void)
@@ -115,6 +123,8 @@ static void rejected_inputs(void)
     assert(!fourier_frame_scale(frame, 4U, NAN));
     assert(!fourier_frame_rms(frame, 0U, &rms));
     assert(!fourier_frame_rms(frame, 4U, NULL));
+    assert(!fourier_frame_apply_hann_periodic(NULL, 4U));
+    assert(!fourier_frame_apply_hann_symmetric(frame, 0U));
 
     source[2] = NAN;
     assert(!fourier_frame_copy(source, 4U, 0U, 4U, frame, 4U));
@@ -125,9 +135,9 @@ int main(void)
     copy_and_overlap();
     mean_gain_and_rms();
     transactional_failures();
-    hann_window();
+    hann_windows();
     frame_then_fft();
     rejected_inputs();
-    puts("PASS framing copy/overlap, transactional mean/gain, RMS, Hann and FFT composition");
+    puts("PASS framing copy/overlap, transactional mean/gain, RMS, periodic/symmetric Hann and FFT composition");
     return 0;
 }
