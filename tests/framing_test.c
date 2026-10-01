@@ -2,6 +2,7 @@
 #include "framing.h"
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -50,6 +51,21 @@ static void mean_gain_and_rms(void)
     assert(near(rms, 2.0 * sqrt(1.25), 1e-12));
 }
 
+static void transactional_failures(void)
+{
+    float scale_frame[] = {FLT_MAX, 1.0f, -2.0f};
+    float scale_original[3];
+    memcpy(scale_original, scale_frame, sizeof(scale_frame));
+    assert(!fourier_frame_scale(scale_frame, 3U, 2.0));
+    assert(memcmp(scale_frame, scale_original, sizeof(scale_frame)) == 0);
+
+    float mean_frame[] = {FLT_MAX, -FLT_MAX, -FLT_MAX};
+    float mean_original[3];
+    memcpy(mean_original, mean_frame, sizeof(mean_frame));
+    assert(!fourier_frame_remove_mean(mean_frame, 3U));
+    assert(memcmp(mean_frame, mean_original, sizeof(mean_frame)) == 0);
+}
+
 static void hann_window(void)
 {
     float frame[5] = {1, 1, 1, 1, 1};
@@ -81,15 +97,14 @@ static void frame_then_fft(void)
     assert(fourier_fft_real_radix2(frame, 64U, coefficients, 64U));
 
     assert(hypot(coefficients[0].real, coefficients[0].imaginary) < 1e-7);
-    assert(near(coefficients[8].real, 0.4, 1e-6) ||
-           near(coefficients[8].real, -0.4, 1e-6));
-    assert(hypot(coefficients[8].real, coefficients[8].imaginary) > 0.399);
+    assert(near(coefficients[8].real, 0.4, 1e-6));
+    assert(fabs(coefficients[8].imaginary) < 1e-6);
 }
 
 static void rejected_inputs(void)
 {
     float source[4] = {0, 1, 2, 3};
-    float frame[4];
+    float frame[4] = {0};
     double rms = 0.0;
 
     assert(!fourier_frame_copy(NULL, 4U, 0U, 4U, frame, 4U));
@@ -109,9 +124,10 @@ int main(void)
 {
     copy_and_overlap();
     mean_gain_and_rms();
+    transactional_failures();
     hann_window();
     frame_then_fft();
     rejected_inputs();
-    puts("PASS framing copy/overlap, mean, gain, RMS, Hann and FFT composition");
+    puts("PASS framing copy/overlap, transactional mean/gain, RMS, Hann and FFT composition");
     return 0;
 }
