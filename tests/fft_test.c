@@ -5,16 +5,17 @@
 #include <math.h>
 #include <stdio.h>
 
-#define MAX_SAMPLES 256U
+#define COMPARE_MAX 256U
+#define REALISTIC_COUNT 4096U
 
 static void compare(const float *samples, size_t count, double tolerance)
 {
-    struct complex_value direct[MAX_SAMPLES];
-    struct complex_value fast[MAX_SAMPLES];
+    struct complex_value direct[COMPARE_MAX];
+    struct complex_value fast[COMPARE_MAX];
 
-    assert(count <= MAX_SAMPLES);
-    assert(fourier_dft_real(samples, count, direct, MAX_SAMPLES));
-    assert(fourier_fft_real_radix2(samples, count, fast, MAX_SAMPLES));
+    assert(count <= COMPARE_MAX);
+    assert(fourier_dft_real(samples, count, direct, COMPARE_MAX));
+    assert(fourier_fft_real_radix2(samples, count, fast, COMPARE_MAX));
 
     for (size_t k = 0U; k < count; ++k) {
         assert(fabs(direct[k].real - fast[k].real) <= tolerance);
@@ -56,9 +57,9 @@ static void deterministic_signals(void)
 static void pseudo_random_signals(void)
 {
     unsigned state = 0x12345678U;
-    float samples[MAX_SAMPLES];
+    float samples[COMPARE_MAX];
 
-    for (size_t count = 2U; count <= MAX_SAMPLES; count <<= 1U) {
+    for (size_t count = 2U; count <= COMPARE_MAX; count <<= 1U) {
         for (size_t n = 0U; n < count; ++n) {
             state = state * 1664525U + 1013904223U;
             unsigned mantissa = state >> 8U;
@@ -67,6 +68,57 @@ static void pseudo_random_signals(void)
         }
         compare(samples, count, 2e-11);
     }
+}
+
+static void realistic_block(void)
+{
+    static float samples[REALISTIC_COUNT];
+    static struct complex_value coefficients[REALISTIC_COUNT];
+    const double tau = 6.283185307179586476925286766559;
+
+    for (size_t n = 0U; n < REALISTIC_COUNT; ++n) {
+        double t = (double)n / (double)REALISTIC_COUNT;
+        samples[n] = (float)(
+            0.1 +
+            0.7 * cos(tau * 123.0 * t) -
+            0.2 * sin(tau * 777.0 * t)
+        );
+    }
+
+    assert(fourier_fft_real_radix2(samples, REALISTIC_COUNT,
+                                   coefficients, REALISTIC_COUNT));
+
+    assert(fabs(coefficients[0].real - 0.1) < 1e-7);
+    assert(fabs(coefficients[0].imaginary) < 1e-10);
+
+    assert(fabs(coefficients[123].real - 0.35) < 1e-7);
+    assert(fabs(coefficients[123].imaginary) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 123U].real - 0.35) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 123U].imaginary) < 1e-7);
+
+    assert(fabs(coefficients[777].real) < 1e-7);
+    assert(fabs(coefficients[777].imaginary - 0.1) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 777U].real) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 777U].imaginary + 0.1) < 1e-7);
+
+    double sample_energy = 0.0;
+    double coefficient_energy = 0.0;
+    for (size_t n = 0U; n < REALISTIC_COUNT; ++n)
+        sample_energy += (double)samples[n] * (double)samples[n];
+    sample_energy /= (double)REALISTIC_COUNT;
+
+    for (size_t k = 0U; k < REALISTIC_COUNT; ++k) {
+        coefficient_energy +=
+            coefficients[k].real * coefficients[k].real +
+            coefficients[k].imaginary * coefficients[k].imaginary;
+
+        size_t mirror = (REALISTIC_COUNT - k) % REALISTIC_COUNT;
+        assert(fabs(coefficients[k].real - coefficients[mirror].real) < 2e-9);
+        assert(fabs(coefficients[k].imaginary +
+                    coefficients[mirror].imaginary) < 2e-9);
+    }
+
+    assert(fabs(sample_energy - coefficient_energy) < 2e-9);
 }
 
 static void rejected_inputs(void)
@@ -88,7 +140,8 @@ int main(void)
 {
     deterministic_signals();
     pseudo_random_signals();
+    realistic_block();
     rejected_inputs();
-    puts("PASS radix-2 FFT matches direct DFT for full normalized complex coefficients");
+    puts("PASS radix-2 FFT matches DFT, 4096-sample harmonics, conjugacy and Parseval");
     return 0;
 }
