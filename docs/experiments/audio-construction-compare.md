@@ -20,3 +20,24 @@ relevant q-series/lacunary phase-portrait work but does not expose that driver.
 Each fixture writes `.dense.ppm` and `.dyadic.ppm`. Both must be nonconstant,
 and more than 20% of pixels must differ, so the test directly measures whether
 the construction changes the visual result while sound analysis stays fixed.
+
+## First controlled corpus result
+
+GitHub Actions run `36892722076` rendered all six real-audio fixtures with
+the controlled 12-coefficient comparison. The dense and dyadic images were
+visually nontrivial and materially different.
+
+| fixture | pixels changed | mean absolute RGB difference / channel |
+| --- | ---: | ---: |
+| thunder/rain | 99.38% | 28.53 |
+| iceberg contact | 96.59% | 24.56 |
+| Dvořák Largo | 94.87% | 12.39 |
+| Bartók Sonatina | 80.92% | 3.73 |
+| Russolo Corale | 91.89% | 10.72 |
+| Russolo Serenata | 90.77% | 6.74 |
+
+The lower differences for Bartók and Serenata are consistent with an important
+limitation of this particular comparison: twelve coefficients at 44.1 kHz with
+a 4096-sample FFT cover only bins 0 through 11, roughly 0–118 Hz. This experiment
+isolates exponent-schedule sensitivity; it does not yet establish a good
+coefficient-selection policy for music.
