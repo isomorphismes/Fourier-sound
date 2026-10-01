@@ -4,7 +4,7 @@ BUILD ?= build
 CC ?= cc
 CFLAGS ?= -O2 -g
 WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
-INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Iacceptance
+INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Iacceptance -Iexperiments
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
 HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h acceptance/*.h)
 REFERENCE = fourier/dft.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/ppm.c
@@ -33,10 +33,10 @@ ICEBERG_CONTACT_URL = https://pmel.noaa.gov/acoustics/sounds/HarmonicTremor2006_
 DVORAK_URL = https://upload.wikimedia.org/wikipedia/commons/c/c3/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg
 BARTOK_URL = https://upload.wikimedia.org/wikipedia/commons/1/1c/Bartok_-_Sonatina.ogg
 RUSSOLO_CORALE_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_08_Corale-1921.mp3
-RUSSOLO_SERENATA_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_09_Serenata%2C-1921.mp3
+RUSSOLO_SERENATA_URL = https://archive.org/download/russolo-luigi-corale-serenata-1921/Russolo-Luigi_09_Serenata%2C-1921.mp3\nNIGHTINGALE_URL = https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg
 
 
-.PHONY: all test android media-fetch media-test
+.PHONY: all test android media-fetch media-test nightingale-static-overlay
 all: test
 
 $(BUILD)/pcm-test: tests/pcm_test.c $(COMMON) $(HEADERS)
