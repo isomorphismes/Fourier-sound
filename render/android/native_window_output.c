@@ -3,6 +3,7 @@
 #include "rgb24_rgba8888.h"
 
 #include <limits.h>
+#include <stdint.h>
 
 const char *native_window_output_result_text(
     enum native_window_output_result result)
