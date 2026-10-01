@@ -116,7 +116,8 @@ static size_t nonconstant_pixels(const struct rgb24 *pixels)
 
 static size_t compare_constructions(const char *source_path,
                                     const struct complex_value *coefficients,
-                                    char **dense_path, char **dyadic_path)
+                                    char **dense_path, char **dyadic_path,
+                                    double *mean_rgb_difference)
 {
     struct rgb24 *dense = malloc(IMAGE_PIXELS * sizeof(*dense));
     struct rgb24 *dyadic = malloc(IMAGE_PIXELS * sizeof(*dyadic));
@@ -147,11 +148,22 @@ static size_t compare_constructions(const char *source_path,
     assert(nonconstant_pixels(dyadic) > IMAGE_PIXELS / 10U);
 
     size_t changed = 0U;
-    for (size_t i = 0U; i < IMAGE_PIXELS; ++i)
-        if (dense[i].red != dyadic[i].red ||
-            dense[i].green != dyadic[i].green ||
-            dense[i].blue != dyadic[i].blue) ++changed;
+    uint64_t absolute_difference = 0U;
+    for (size_t i = 0U; i < IMAGE_PIXELS; ++i) {
+        int red = (int)dense[i].red - (int)dyadic[i].red;
+        int green = (int)dense[i].green - (int)dyadic[i].green;
+        int blue = (int)dense[i].blue - (int)dyadic[i].blue;
+        if (red < 0) red = -red;
+        if (green < 0) green = -green;
+        if (blue < 0) blue = -blue;
+        absolute_difference += (uint64_t)(red + green + blue);
+
+        if (red || green || blue) ++changed;
+    }
+    *mean_rgb_difference =
+        (double)absolute_difference / (double)(IMAGE_PIXELS * 3U);
     assert(changed > IMAGE_PIXELS / 5U);
+    assert(*mean_rgb_difference > 1.0);
 
     *dense_path = output_path(source_path, ".dense.ppm");
     *dyadic_path = output_path(source_path, ".dyadic.ppm");
@@ -215,11 +227,15 @@ static void test_fixture(const char *path)
 
     char *dense_path = NULL;
     char *dyadic_path = NULL;
-    size_t changed = compare_constructions(path, coefficients, &dense_path, &dyadic_path);
+    double mean_rgb_difference = 0.0;
+    size_t changed = compare_constructions(
+        path, coefficients, &dense_path, &dyadic_path, &mean_rgb_difference);
 
     double peak_hz = (double)peak_bin * SAMPLE_RATE / WINDOW;
-    printf("PASS compare %s peak=%.1fHz bins=%zu changed=%zu/%u dense=%s dyadic=%s\n",
-           path, peak_hz, occupied, changed, IMAGE_PIXELS, dense_path, dyadic_path);
+    printf("PASS compare %s peak=%.1fHz bins=%zu changed=%zu/%u "
+           "rgb_mae=%.3f dense=%s dyadic=%s\n",
+           path, peak_hz, occupied, changed, IMAGE_PIXELS,
+           mean_rgb_difference, dense_path, dyadic_path);
 
     free(dyadic_path);
     free(dense_path);
