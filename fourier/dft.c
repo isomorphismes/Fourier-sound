@@ -3,7 +3,7 @@
 #include <math.h>
 
 bool fourier_dft_real(const float *samples, size_t sample_count,
-                      struct fourier_complex *coefficients, size_t capacity)
+                      struct complex_value *coefficients, size_t capacity)
 {
     if (!samples || !coefficients || !sample_count || capacity < sample_count)
         return false;
@@ -23,8 +23,8 @@ bool fourier_dft_real(const float *samples, size_t sample_count,
             real += sample * cos(angle);
             imaginary -= sample * sin(angle);
         }
-        coefficients[k] = (struct fourier_complex){real * scale,
-                                                    imaginary * scale};
+        coefficients[k] = (struct complex_value){real * scale,
+                                                  imaginary * scale};
     }
     return true;
 }

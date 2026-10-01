@@ -26,8 +26,8 @@ static uint8_t byte(double value)
     return (uint8_t)lrint(clamp01(value) * 255.0);
 }
 
-static struct wegert_rgb hcl_to_srgb(double hue_degrees, double chroma,
-                                     double lightness)
+static struct rgb24 hcl_to_srgb(double hue_degrees, double chroma,
+                                double lightness)
 {
     const double white_u_prime = 0.19783982482140777;
     const double white_v_prime = 0.46833630293240974;
@@ -42,10 +42,8 @@ static struct wegert_rgb hcl_to_srgb(double hue_degrees, double chroma,
         ? pow((lightness + 16.0) / 116.0, 3.0)
         : lightness / 903.2962962962963;
 
-    double u_prime =
-        u_star / (13.0 * lightness) + white_u_prime;
-    double v_prime =
-        v_star / (13.0 * lightness) + white_v_prime;
+    double u_prime = u_star / (13.0 * lightness) + white_u_prime;
+    double v_prime = v_star / (13.0 * lightness) + white_v_prime;
 
     double x = (9.0 * y * u_prime) / (4.0 * v_prime);
     double z = y * (12.0 - 3.0 * u_prime - 20.0 * v_prime) /
@@ -58,7 +56,7 @@ static struct wegert_rgb hcl_to_srgb(double hue_degrees, double chroma,
     double linear_blue =
          0.0556434 * x - 0.2040259 * y + 1.0572252 * z;
 
-    return (struct wegert_rgb){
+    return (struct rgb24){
         byte(srgb_component(linear_red)),
         byte(srgb_component(linear_green)),
         byte(srgb_component(linear_blue))
@@ -66,7 +64,7 @@ static struct wegert_rgb hcl_to_srgb(double hue_degrees, double chroma,
 }
 
 bool wegert_color_from_phase_log_modulus(double phase, double log_modulus,
-                                         struct wegert_rgb *rgb)
+                                         struct rgb24 *rgb)
 {
     if (!rgb || !isfinite(phase) || !isfinite(log_modulus)) return false;
 
@@ -83,8 +81,7 @@ bool wegert_color_from_phase_log_modulus(double phase, double log_modulus,
     return true;
 }
 
-bool wegert_color_complex(struct fourier_complex value,
-                          struct wegert_rgb *rgb)
+bool wegert_color_complex(struct complex_value value, struct rgb24 *rgb)
 {
     if (!rgb || !isfinite(value.real) || !isfinite(value.imaginary))
         return false;
@@ -96,8 +93,8 @@ bool wegert_color_complex(struct fourier_complex value,
     return wegert_color_from_phase_log_modulus(phase, log(magnitude), rgb);
 }
 
-bool wegert_color_values(const struct fourier_complex *values, size_t count,
-                         struct wegert_rgb *pixels, size_t capacity)
+bool wegert_color_values(const struct complex_value *values, size_t count,
+                         struct rgb24 *pixels, size_t capacity)
 {
     if (!values || !pixels || capacity < count) return false;
     for (size_t index = 0; index < count; ++index)

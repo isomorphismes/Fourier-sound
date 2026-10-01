@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-bool rgb24_write_ppm(const char *path, const struct wegert_rgb *pixels,
+bool rgb24_write_ppm(const char *path, const struct rgb24 *pixels,
                      size_t width, size_t height, size_t capacity)
 {
     if (!path || !pixels || !width || !height ||
