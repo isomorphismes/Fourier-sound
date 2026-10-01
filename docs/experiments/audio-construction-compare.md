@@ -7,10 +7,10 @@ For each fixture both constructions use the same loudest 4096-sample block,
 mean removal, periodic Hann, normalized radix-2 FFT, viewport, and canonical
 Wegert coloring.
 
-The dense control is
-`f(q)=sum_(k=0)^63 c[k] q^k`.
+The dense control uses the same first twelve coefficients as the sparse candidate:
+`f(q)=sum_(k=0)^11 c[k] q^k`.
 
-The sparse candidate uses the first twelve coefficients with exponents
+The sparse candidate uses those same first twelve coefficients with exponents
 `0,1,2,4,8,16,32,64,128,256,512,1024`.
 
 This dyadic schedule is an explicit candidate experiment, **not** an assertion
