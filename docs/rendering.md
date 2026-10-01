@@ -57,7 +57,8 @@ It preserves that implementation's:
 - CIE L*u*v* -> D65 XYZ -> sRGB conversion.
 
 The host test contains fixed RGB reference points so an accidental replacement
-with a generic HSV wheel fails visibly.
+with a generic HSV wheel fails visibly. Exact zero/pole marker representation
+remains outside this color core, matching the ownership boundary in Wegert.
 
 ## PPM
 
