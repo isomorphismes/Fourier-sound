@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #define SAMPLE_RATE 44100U
-#define WINDOW 512U
+#define WINDOW 4096U
 
 struct clip {
     int16_t *samples;
