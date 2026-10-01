@@ -99,14 +99,14 @@ $(BUILD)/fourier-render-window-$(1).apk: $(BUILD)/android/$(1)/render-staging/li
 	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/RenderManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code $(VERSION_CODE) --version-name 0.1.0 -o $(BUILD)/android/$(1)/render-unsigned.apk
 	cd $(BUILD)/android/$(1)/render-staging && zip -0 -q -r ../render-unsigned.apk lib
 	$(TOOLS)/zipalign -f -P 16 4 $(BUILD)/android/$(1)/render-unsigned.apk $(BUILD)/android/$(1)/render-aligned.apk
-	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $@ $(BUILD)/android/$(1)/render-aligned.apk
-	$(TOOLS)/apksigner verify --verbose --print-certs $@ > $(BUILD)/android/$(1)/render-signer.txt
+	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $$@ $(BUILD)/android/$(1)/render-aligned.apk
+	$(TOOLS)/apksigner verify --verbose --print-certs $$@ > $(BUILD)/android/$(1)/render-signer.txt
 	grep -Fq 'Signer #1 certificate SHA-256 digest: de9b1d47c5a65e6d46a204b79dd9ee566b9d3c9832ba81ebc4213d3392e92ff9' $(BUILD)/android/$(1)/render-signer.txt
-	$(TOOLS)/zipalign -c -P 16 4 $@
-	unzip -Z1 $@ > $(BUILD)/android/$(1)/render-entries.txt
-	! grep -E '(^|/)classes[0-9]*\.dex$$' $(BUILD)/android/$(1)/render-entries.txt
+	$(TOOLS)/zipalign -c -P 16 4 $$@
+	unzip -Z1 $$@ > $(BUILD)/android/$(1)/render-entries.txt
+	! grep -E '(^|/)classes[0-9]*\.dex$$$$' $(BUILD)/android/$(1)/render-entries.txt
 	$(TOOLCHAIN)/llvm-readelf -h $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so
-	sha256sum $@ > $@.sha256
+	sha256sum $$@ > $$@.sha256
 
 $(BUILD)/fourier-speaker-$(1).apk: $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so android/SpeakerManifest.xml
 	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/SpeakerManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code $(VERSION_CODE) --version-name 0.1.0 -o $(BUILD)/android/$(1)/speaker-unsigned.apk
