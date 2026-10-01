@@ -72,22 +72,3 @@ jobs:
             build/fourier-speaker-x86_64.apk.sha256
             build/source-commit.txt
           if-no-files-found: error
-
-  construction_media:
-    if: github.event_name == 'pull_request' && github.head_ref == 'experiments/audio-construction-compare'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Install media decoder
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-      - name: Compare dense and dyadic constructions on public audio
-        run: make media-test
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fourier-construction-compare-${{ github.event.pull_request.head.sha || github.sha }}
-          path: build/media/*.ppm
-          if-no-files-found: error
