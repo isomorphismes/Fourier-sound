@@ -25,7 +25,7 @@ The Chris Watson / Touch Antarctic recordings are good listening references but 
 For every fixture, `tests/media_fixture_test.c`:
 
 1. reads canonical signed-16 PCM and sends every complete block through `fourier_pcm_mono`;
-2. finds a non-silent 512-frame block;
+2. finds a non-silent 4096-frame block;
 3. runs a deliberately small test-local direct DFT over that block and requires finite, nontrivial spectral energy in more than one bin;
 4. sends the same mono block through `speaker_input` as stereo signed-16 output;
 5. converts that rendered speaker PCM back through `fourier_pcm_mono` and checks the quantized round trip.
