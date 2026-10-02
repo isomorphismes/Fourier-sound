@@ -9,33 +9,33 @@ fourier_polynomial_cartesian_ick(
     double z_imag,
     double output_cartesian[static 2])
 {
-    double sum_real = 0.0;
-    double sum_imag = 0.0;
-    double power_real = 1.0;
-    double power_imag = 0.0;
-
     if (term_count > coefficient_count)
         term_count = coefficient_count;
 
-    for (unsigned int index = 0U; index < term_count; ++index) {
-        double coefficient_real = coefficients_cartesian[index * 2U];
-        double coefficient_imag = coefficients_cartesian[index * 2U + 1U];
-
-        sum_real +=
-            coefficient_real * power_real -
-            coefficient_imag * power_imag;
-        sum_imag +=
-            coefficient_real * power_imag +
-            coefficient_imag * power_real;
-
-        double next_real =
-            power_real * z_real - power_imag * z_imag;
-        double next_imag =
-            power_real * z_imag + power_imag * z_real;
-        power_real = next_real;
-        power_imag = next_imag;
+    if (term_count == 0U) {
+        output_cartesian[0] = 0.0;
+        output_cartesian[1] = 0.0;
+        return;
     }
 
-    output_cartesian[0] = sum_real;
-    output_cartesian[1] = sum_imag;
+    unsigned int index = term_count - 1U;
+    double value_real = coefficients_cartesian[index * 2U];
+    double value_imag = coefficients_cartesian[index * 2U + 1U];
+
+    while (index != 0U) {
+        --index;
+
+        double next_real =
+            value_real * z_real - value_imag * z_imag +
+            coefficients_cartesian[index * 2U];
+        double next_imag =
+            value_real * z_imag + value_imag * z_real +
+            coefficients_cartesian[index * 2U + 1U];
+
+        value_real = next_real;
+        value_imag = next_imag;
+    }
+
+    output_cartesian[0] = value_real;
+    output_cartesian[1] = value_imag;
 }

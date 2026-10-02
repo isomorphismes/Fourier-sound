@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - 'ick/fourier-voice-miro-a1'
+  pull_request:
+    branches:
+      - 'audio/fourier-voice-diagnostics'
+    paths:
+      - 'fourier/ick_polynomial_leaf.c'
+      - 'tests/ick_polynomial_leaf_test.c'
+      - 'android/voice_main.c'
+      - 'Makefile'
+      - '.github/workflows/ick-fourier-voice.yml'
   workflow_dispatch:
 
 permissions:
