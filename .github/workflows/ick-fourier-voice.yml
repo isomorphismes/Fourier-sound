@@ -154,9 +154,13 @@ jobs:
           ick_apk_bytes="$(stat -c %s "$ick_apk")"
           printf 'ick_minus_ndk_apk_bytes\t%s\n' "$((ick_apk_bytes - ndk_apk_bytes))" \
             | tee -a build/miro-release-sizes.tsv
-          printf '### MIRO stripped release sizes\n\n```text\n' >> "$GITHUB_STEP_SUMMARY"
-          cat build/miro-release-sizes.tsv >> "$GITHUB_STEP_SUMMARY"
-          printf '```\n' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo '### MIRO stripped release sizes'
+            echo
+            echo '~~~text'
+            cat build/miro-release-sizes.tsv
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify packaged native libraries are stripped ARMv7 and no-DEX
         shell: bash
@@ -173,7 +177,11 @@ jobs:
             grep -q 'Class:.*ELF32' "build/$variant-final.elf"
             grep -q 'Machine:.*ARM' "build/$variant-final.elf"
             ! llvm-readelf -S "build/libfourier_voice-$variant.so" | grep -q '\.debug_'
-            ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex
+            ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex$'
+          done
+          llvm-nm build/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so \
+            | grep -q 'fourier_polynomial_cartesian_ick'
+
       - uses: actions/upload-artifact@v4
         with:
           name: fourier-voice-ick-miro-a1-${{ github.sha }}
@@ -187,24 +195,6 @@ jobs:
             build/miro-release-sizes.tsv
             build/symbols/ndk/libfourier_voice.so.debug
             build/symbols/ick/libfourier_voice.so.debug
-            build/ick/armeabi-v7a/fourier_voice_leaf.o
-            build/ick/armeabi-v7a/ick-leaf.elf
-            build/ick/armeabi-v7a/ick-leaf.attributes
-            build/ick/armeabi-v7a/ick-leaf.undefined
-            build/ick-source-commit.txt
-            build/fourier-sound-source-commit.txt
-          if-no-files-found: error
-
-          done
-          llvm-nm build/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so \
-            | grep -q 'fourier_polynomial_cartesian_ick'
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fourier-voice-ick-miro-a1-${{ github.sha }}
-          path: |
-            build/fourier-voice-ick-armeabi-v7a.apk
-            build/fourier-voice-ick-armeabi-v7a.apk.sha256
             build/ick/armeabi-v7a/fourier_voice_leaf.o
             build/ick/armeabi-v7a/ick-leaf.elf
             build/ick/armeabi-v7a/ick-leaf.attributes
