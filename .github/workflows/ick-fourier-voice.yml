@@ -124,26 +124,79 @@ jobs:
         with:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018'
 
-      - name: Link ICK object into native Fourier Voice APK
+      - name: Build MIRO-only diagnostic and stripped release APKs
         shell: bash
         run: |
           set -euxo pipefail
-          make android-ick-armv7 \
+          make android-ick-armv7 miro-release-compare \
             ICK_ARMV7_OBJECT="$GITHUB_WORKSPACE/build/ick/armeabi-v7a/fourier_voice_leaf.o"
           printf '%s\n' "$ICK_COMMIT" > build/ick-source-commit.txt
           git rev-parse HEAD > build/fourier-sound-source-commit.txt
 
-      - name: Verify packaged native library
+      - name: Record exact stripped size comparison
         shell: bash
         run: |
           set -euxo pipefail
-          unzip -p build/fourier-voice-ick-armeabi-v7a.apk \
-            lib/armeabi-v7a/libfourier_voice.so \
-            > build/libfourier_voice-ick.so
-          llvm-readelf -h build/libfourier_voice-ick.so | tee build/ick-final.elf
-          grep -q 'Class:.*ELF32' build/ick-final.elf
-          grep -q 'Machine:.*ARM' build/ick-final.elf
-          llvm-nm build/libfourier_voice-ick.so \
+          ndk_so=build/release/ndk/lib/armeabi-v7a/libfourier_voice.so
+          ick_so=build/release/ick/lib/armeabi-v7a/libfourier_voice.so
+          ndk_apk=build/fourier-voice-miro-release.apk
+          ick_apk=build/fourier-voice-ick-miro-release.apk
+          ndk_debug=build/symbols/ndk/libfourier_voice.so.debug
+          ick_debug=build/symbols/ick/libfourier_voice.so.debug
+          {
+            printf 'variant\tso_bytes\tapk_bytes\tseparate_debug_bytes\n'
+            printf 'NDK\t%s\t%s\t%s\n' \
+              "$(stat -c %s "$ndk_so")" "$(stat -c %s "$ndk_apk")" "$(stat -c %s "$ndk_debug")"
+            printf 'ICK-leaf\t%s\t%s\t%s\n' \
+              "$(stat -c %s "$ick_so")" "$(stat -c %s "$ick_apk")" "$(stat -c %s "$ick_debug")"
+          } | tee build/miro-release-sizes.tsv
+          ndk_apk_bytes="$(stat -c %s "$ndk_apk")"
+          ick_apk_bytes="$(stat -c %s "$ick_apk")"
+          printf 'ick_minus_ndk_apk_bytes\t%s\n' "$((ick_apk_bytes - ndk_apk_bytes))" \
+            | tee -a build/miro-release-sizes.tsv
+          printf '### MIRO stripped release sizes\n\n```text\n' >> "$GITHUB_STEP_SUMMARY"
+          cat build/miro-release-sizes.tsv >> "$GITHUB_STEP_SUMMARY"
+          printf '```\n' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify packaged native libraries are stripped ARMv7 and no-DEX
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for variant in ndk ick; do
+            if [ "$variant" = ndk ]; then
+              apk=build/fourier-voice-miro-release.apk
+            else
+              apk=build/fourier-voice-ick-miro-release.apk
+            fi
+            unzip -p "$apk" lib/armeabi-v7a/libfourier_voice.so > "build/libfourier_voice-$variant.so"
+            llvm-readelf -h "build/libfourier_voice-$variant.so" | tee "build/$variant-final.elf"
+            grep -q 'Class:.*ELF32' "build/$variant-final.elf"
+            grep -q 'Machine:.*ARM' "build/$variant-final.elf"
+            ! llvm-readelf -S "build/libfourier_voice-$variant.so" | grep -q '\.debug_'
+            ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fourier-voice-ick-miro-a1-${{ github.sha }}
+          path: |
+            build/fourier-voice-ick-armeabi-v7a.apk
+            build/fourier-voice-ick-armeabi-v7a.apk.sha256
+            build/fourier-voice-miro-release.apk
+            build/fourier-voice-miro-release.apk.sha256
+            build/fourier-voice-ick-miro-release.apk
+            build/fourier-voice-ick-miro-release.apk.sha256
+            build/miro-release-sizes.tsv
+            build/symbols/ndk/libfourier_voice.so.debug
+            build/symbols/ick/libfourier_voice.so.debug
+            build/ick/armeabi-v7a/fourier_voice_leaf.o
+            build/ick/armeabi-v7a/ick-leaf.elf
+            build/ick/armeabi-v7a/ick-leaf.attributes
+            build/ick/armeabi-v7a/ick-leaf.undefined
+            build/ick-source-commit.txt
+            build/fourier-sound-source-commit.txt
+          if-no-files-found: error
+
+          done
+          llvm-nm build/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so \
             | grep -q 'fourier_polynomial_cartesian_ick'
 
       - uses: actions/upload-artifact@v4
