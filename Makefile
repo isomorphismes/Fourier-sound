@@ -219,7 +219,7 @@ $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armea
 	$(TOOLCHAIN)/llvm-readelf -h $@
 
 $(BUILD)/fourier-voice-miro-release.apk: $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
-	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/VoiceManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code 4 --version-name 0.4.0 -o $(BUILD)/android/armeabi-v7a/voice-release-unsigned.apk
+	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/VoiceManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code 5 --version-name 0.5.0 -o $(BUILD)/android/armeabi-v7a/voice-release-unsigned.apk
 	cd $(BUILD)/release/ndk && zip -0 -q -r ../../android/armeabi-v7a/voice-release-unsigned.apk lib
 	$(TOOLS)/zipalign -f -P 16 4 $(BUILD)/android/armeabi-v7a/voice-release-unsigned.apk $(BUILD)/android/armeabi-v7a/voice-release-aligned.apk
 	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $@ $(BUILD)/android/armeabi-v7a/voice-release-aligned.apk
@@ -242,7 +242,7 @@ $(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armea
 	$(TOOLCHAIN)/llvm-readelf -h $@
 
 $(BUILD)/fourier-voice-ick-miro-release.apk: $(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
-	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/VoiceManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code 4 --version-name 0.4.0 -o $(BUILD)/android/armeabi-v7a/voice-ick-release-unsigned.apk
+	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/VoiceManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code 5 --version-name 0.5.0 -o $(BUILD)/android/armeabi-v7a/voice-ick-release-unsigned.apk
 	cd $(BUILD)/release/ick && zip -0 -q -r ../../android/armeabi-v7a/voice-ick-release-unsigned.apk lib
 	$(TOOLS)/zipalign -f -P 16 4 $(BUILD)/android/armeabi-v7a/voice-ick-release-unsigned.apk $(BUILD)/android/armeabi-v7a/voice-ick-release-aligned.apk
 	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $@ $(BUILD)/android/armeabi-v7a/voice-ick-release-aligned.apk
