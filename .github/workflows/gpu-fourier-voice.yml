@@ -1,0 +1,84 @@
+name: GPU Fourier Voice MIRO A1
+
+on:
+  push:
+    branches:
+      - 'gpu/fft-wegert-resident'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out Fourier Voice
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Run host reference tests
+        run: make test
+
+      - name: Stable public test signer
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphismes/wegert
+          ref: 89dcfb840cec1a66ee04c7f7404954cbd6c09839
+          path: .test-signing
+          sparse-checkout: _/build/app/wegert-debug.keystore
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018'
+
+      - name: Build stripped GPU-resident MIRO APK
+        run: make android-gpu-miro-release
+
+      - name: Verify ARMv7, stripping, no DEX, and GPU linkage
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apk=build/fourier-voice-gpu-miro-release.apk
+          so=build/release/gpu/lib/armeabi-v7a/libfourier_voice.so
+          toolchain="$ANDROID_HOME/ndk/27.2.12479018/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          "$toolchain/llvm-readelf" -h "$so" | tee build/gpu-final.elf
+          grep -q 'Class:.*ELF32' build/gpu-final.elf
+          grep -q 'Machine:.*ARM' build/gpu-final.elf
+          ! "$toolchain/llvm-readelf" -S "$so" | grep -q '\.debug_'
+          ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex$'
+          "$toolchain/llvm-nm" -D "$so" | grep -q ' U glDispatchCompute'
+          "$toolchain/llvm-nm" -D "$so" | grep -q ' U glBindBufferBase'
+          "$toolchain/llvm-nm" -D "$so" | grep -q ' U eglSwapBuffers'
+          ! "$toolchain/llvm-nm" -D "$so" | grep -q 'fourier_fft_real_radix2'
+
+      - name: Record artifact size
+        shell: bash
+        run: |
+          set -euxo pipefail
+          {
+            printf 'artifact\tbytes\n'
+            printf 'gpu_so\t%s\n' "$(stat -c %s build/release/gpu/lib/armeabi-v7a/libfourier_voice.so)"
+            printf 'gpu_apk\t%s\n' "$(stat -c %s build/fourier-voice-gpu-miro-release.apk)"
+            printf 'gpu_debug\t%s\n' "$(stat -c %s build/symbols/gpu/libfourier_voice.so.debug)"
+          } | tee build/gpu-release-sizes.tsv
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fourier-voice-gpu-miro-a1
+          path: |
+            build/fourier-voice-gpu-miro-release.apk
+            build/fourier-voice-gpu-miro-release.apk.sha256
+            build/gpu-release-sizes.tsv
+            build/gpu-final.elf
+            build/symbols/gpu/libfourier_voice.so.debug
+          if-no-files-found: error
