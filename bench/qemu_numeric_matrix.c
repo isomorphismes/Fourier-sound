@@ -533,7 +533,7 @@ static unsigned fft_iterations(unsigned n)
 int main(int argc, char **argv)
 {
     const char *cpu = argc > 1 ? argv[1] : "unknown";
-    const unsigned terms_list[] = {8U, 16U, 24U, 32U, 48U, 64U};
+    const unsigned terms_list[] = {8U, 16U, 24U, 26U, 28U, 30U, 32U, 48U, 64U};
     const unsigned n_list[] = {256U, 512U, 1024U, 2048U, 4096U};
 
     init_data();
