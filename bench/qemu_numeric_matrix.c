@@ -28,7 +28,7 @@ static E5M2 coeff_e5_r[MAX_TERMS], coeff_e5_i[MAX_TERMS];
 
 static c64 out64[MAX_N];
 static c32 out32[MAX_N];
-static c32 out_neon[MAX_N];
+static float out_neon_r[MAX_N], out_neon_i[MAX_N];
 static ch16 out16[MAX_N];
 
 static float twr[MAX_N / 2U], twi[MAX_N / 2U];
@@ -293,8 +293,8 @@ static double fft_f32_neon2(unsigned n)
     unsigned bits = log2_exact(n);
     for (unsigned i = 0U; i < n; ++i) {
         unsigned d = reverse_bits(i, bits);
-        out_neon[d].r = input[i];
-        out_neon[d].i = 0.0f;
+        out_neon_r[d] = input[i];
+        out_neon_i[d] = 0.0f;
     }
 
     const float tau = 6.2831853071795864769f;
@@ -316,41 +316,31 @@ static double fft_f32_neon2(unsigned n)
             unsigned off = 0U;
             for (; off + 1U < half; off += 2U) {
                 unsigned e = block + off, o = e + half;
-                float even_r[2] = { out_neon[e].r, out_neon[e + 1U].r };
-                float even_i[2] = { out_neon[e].i, out_neon[e + 1U].i };
-                float odd_r[2] = { out_neon[o].r, out_neon[o + 1U].r };
-                float odd_i[2] = { out_neon[o].i, out_neon[o + 1U].i };
-
-                float32x2_t er = vld1_f32(even_r);
-                float32x2_t ei = vld1_f32(even_i);
-                float32x2_t orr = vld1_f32(odd_r);
-                float32x2_t oii = vld1_f32(odd_i);
+                float32x2_t er = vld1_f32(&out_neon_r[e]);
+                float32x2_t ei = vld1_f32(&out_neon_i[e]);
+                float32x2_t orr = vld1_f32(&out_neon_r[o]);
+                float32x2_t oii = vld1_f32(&out_neon_i[o]);
                 float32x2_t wr = vld1_f32(&twr[off]);
                 float32x2_t wi = vld1_f32(&twi[off]);
 
                 float32x2_t pr = vmls_f32(vmul_f32(orr, wr), oii, wi);
                 float32x2_t pi = vmla_f32(vmul_f32(orr, wi), oii, wr);
 
-                vst1_f32(even_r, vadd_f32(er, pr));
-                vst1_f32(even_i, vadd_f32(ei, pi));
-                vst1_f32(odd_r, vsub_f32(er, pr));
-                vst1_f32(odd_i, vsub_f32(ei, pi));
-
-                out_neon[e].r = even_r[0]; out_neon[e + 1U].r = even_r[1];
-                out_neon[e].i = even_i[0]; out_neon[e + 1U].i = even_i[1];
-                out_neon[o].r = odd_r[0]; out_neon[o + 1U].r = odd_r[1];
-                out_neon[o].i = odd_i[0]; out_neon[o + 1U].i = odd_i[1];
+                vst1_f32(&out_neon_r[e], vadd_f32(er, pr));
+                vst1_f32(&out_neon_i[e], vadd_f32(ei, pi));
+                vst1_f32(&out_neon_r[o], vsub_f32(er, pr));
+                vst1_f32(&out_neon_i[o], vsub_f32(ei, pi));
             }
 
             if (off < half) {
                 unsigned e = block + off, o = e + half;
-                float pr = out_neon[o].r * twr[off] -
-                           out_neon[o].i * twi[off];
-                float pi = out_neon[o].r * twi[off] +
-                           out_neon[o].i * twr[off];
-                float er = out_neon[e].r, ei = out_neon[e].i;
-                out_neon[e].r = er + pr; out_neon[e].i = ei + pi;
-                out_neon[o].r = er - pr; out_neon[o].i = ei - pi;
+                float pr = out_neon_r[o] * twr[off] -
+                           out_neon_i[o] * twi[off];
+                float pi = out_neon_r[o] * twi[off] +
+                           out_neon_i[o] * twr[off];
+                float er = out_neon_r[e], ei = out_neon_i[e];
+                out_neon_r[e] = er + pr; out_neon_i[e] = ei + pi;
+                out_neon_r[o] = er - pr; out_neon_i[o] = ei - pi;
             }
         }
     }
@@ -359,23 +349,16 @@ static double fft_f32_neon2(unsigned n)
     float32x4_t scale4 = vdupq_n_f32(scale);
     unsigned i = 0U;
     for (; i + 3U < n; i += 4U) {
-        float rr[4] = {out_neon[i].r, out_neon[i+1U].r,
-                       out_neon[i+2U].r, out_neon[i+3U].r};
-        float ii[4] = {out_neon[i].i, out_neon[i+1U].i,
-                       out_neon[i+2U].i, out_neon[i+3U].i};
-        float32x4_t vr = vmulq_f32(vld1q_f32(rr), scale4);
-        float32x4_t vi = vmulq_f32(vld1q_f32(ii), scale4);
-        vst1q_f32(rr, vr); vst1q_f32(ii, vi);
-        for (unsigned j = 0U; j < 4U; ++j) {
-            out_neon[i+j].r = rr[j];
-            out_neon[i+j].i = ii[j];
-        }
+        float32x4_t vr = vmulq_f32(vld1q_f32(&out_neon_r[i]), scale4);
+        float32x4_t vi = vmulq_f32(vld1q_f32(&out_neon_i[i]), scale4);
+        vst1q_f32(&out_neon_r[i], vr);
+        vst1q_f32(&out_neon_i[i], vi);
     }
     for (; i < n; ++i) {
-        out_neon[i].r *= scale;
-        out_neon[i].i *= scale;
+        out_neon_r[i] *= scale;
+        out_neon_i[i] *= scale;
     }
-    return (double)out_neon[1U].r + out_neon[n / 3U].i;
+    return (double)out_neon_r[1U] + out_neon_i[n / 3U];
 }
 
 static double fft_fp16_storage(unsigned n)
@@ -450,8 +433,8 @@ static double fft_error_neon(unsigned n)
     (void)fft_f32_neon2(n);
     double worst = 0.0;
     for (unsigned i = 0U; i < n; ++i) {
-        double e = hypot((double)out_neon[i].r - out64[i].r,
-                         (double)out_neon[i].i - out64[i].i);
+        double e = hypot((double)out_neon_r[i] - out64[i].r,
+                         (double)out_neon_i[i] - out64[i].i);
         if (e > worst) worst = e;
     }
     return worst;
@@ -575,7 +558,7 @@ int main(int argc, char **argv)
     const struct fft_case ffts[] = {
         {"f64-scalar", fft_f64, 8U, "double-complex-current-shape"},
         {"f32-scalar", fft_f32, 4U, "binary32-complex"},
-        {"f32-neon2", fft_f32_neon2, 4U, "explicit-2-butterfly-NEON"},
+        {"f32-neon2", fft_f32_neon2, 4U, "explicit-2-butterfly-NEON-SoA"},
         {"fp16-storage-f32-math", fft_fp16_storage, 2U, "requantize-complex-storage-each-stage"}
     };
 
