@@ -25,7 +25,7 @@
 #define RENDER_WIDTH 96U
 #define RENDER_HEIGHT 192U
 #define RENDER_PIXELS (RENDER_WIDTH * RENDER_HEIGHT)
-#define FRAME_INTERVAL_MS 200
+#define FRAME_INTERVAL_MS 50
 #define PEAK_COUNT 5U
 #define FIELD_X_RADIUS 0.44
 #define FIELD_Y_RADIUS 0.88
@@ -250,7 +250,8 @@ static bool render_voice(struct application *a)
     coefficients[0] = (struct complex_value){0.0, 0.0};
 
     uint64_t frame_number = a->frame_number + 1U;
-    log_spectrum(a, coefficients, input_rms, framed_rms, frame_number);
+    if (frame_number == 1U || frame_number % 20U == 0U)
+        log_spectrum(a, coefficients, input_rms, framed_rms, frame_number);
 
     struct rgb24 pixels[RENDER_PIXELS];
 #ifdef FOURIER_USE_ICK_POLYNOMIAL
@@ -293,14 +294,16 @@ static bool render_voice(struct application *a)
     }
 
     a->frame_number = frame_number;
-    LOG("VOICE_FRAME number=%" PRIu64
-        " rate=%u samples=%u window_ms=%.3f terms=%u size=%ux%u "
-        "field_x=%.2f field_y=%.2f field_max_radius=%.6f",
-        a->frame_number, a->properties.sample_rate, SAMPLE_COUNT,
-        1000.0 * (double)SAMPLE_COUNT / (double)a->properties.sample_rate,
-        TERM_COUNT, RENDER_WIDTH, RENDER_HEIGHT,
-        FIELD_X_RADIUS, FIELD_Y_RADIUS,
-        hypot(FIELD_X_RADIUS, FIELD_Y_RADIUS));
+    if (a->frame_number == 1U || a->frame_number % 20U == 0U) {
+        LOG("VOICE_FRAME number=%" PRIu64
+            " rate=%u samples=%u window_ms=%.3f terms=%u size=%ux%u "
+            "field_x=%.2f field_y=%.2f field_max_radius=%.6f",
+            a->frame_number, a->properties.sample_rate, SAMPLE_COUNT,
+            1000.0 * (double)SAMPLE_COUNT / (double)a->properties.sample_rate,
+            TERM_COUNT, RENDER_WIDTH, RENDER_HEIGHT,
+            FIELD_X_RADIUS, FIELD_Y_RADIUS,
+            hypot(FIELD_X_RADIUS, FIELD_Y_RADIUS));
+    }
     return true;
 }
 
