@@ -7,7 +7,7 @@ WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Iacceptance
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
 HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h acceptance/*.h)
-REFERENCE = fourier/dft.c fourier/fft.c fourier/complex_field.c render/wegert.c render/ppm.c
+REFERENCE = fourier/dft.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/ppm.c
 ANDROID_HOME ?= /opt/android-sdk
 NDK ?= $(ANDROID_HOME)/ndk/27.2.12479018
 TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
@@ -17,7 +17,23 @@ ANDROID_JAR = $(ANDROID_HOME)/platforms/android-36/android.jar
 ANDROID_KEYSTORE ?= .test-signing/_/build/app/wegert-debug.keystore
 VERSION_CODE ?= 1
 
-.PHONY: all test android
+SOUNDS_REPO ?= https://github.com/dilapidated-shed/sounds.git
+SOUNDS_REV ?= cde1a53a099d94881145498b4b906da81eba1cc5
+SOUNDS_DIR = $(BUILD)/sounds
+
+MEDIA_DIR = $(BUILD)/media
+MEDIA_RATE = 44100
+MEDIA_SECONDS = 8
+MEDIA_FIXTURES = \
+	$(MEDIA_DIR)/thunder-rain.s16 \
+	$(MEDIA_DIR)/iceberg-contact.s16 \
+	$(MEDIA_DIR)/dvorak-largo.s16 \
+	$(MEDIA_DIR)/bartok-sonatina.s16 \
+	$(MEDIA_DIR)/russolo-corale.s16 \
+	$(MEDIA_DIR)/russolo-serenata.s16
+
+
+.PHONY: all test android media-fetch media-test
 all: test
 
 $(BUILD)/pcm-test: tests/pcm_test.c $(COMMON) $(HEADERS)
@@ -44,13 +60,68 @@ $(BUILD)/fft-test: tests/fft_test.c fourier/dft.c fourier/fft.c $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/fft_test.c fourier/dft.c fourier/fft.c -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test
+$(BUILD)/framing-test: tests/framing_test.c fourier/framing.c fourier/fft.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/framing_test.c fourier/framing.c fourier/fft.c -lm -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test $(BUILD)/media-fixture-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
 	$(BUILD)/speaker-input-test
 	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
 	$(BUILD)/fft-test
+	$(BUILD)/framing-test
+
+
+$(SOUNDS_DIR)/.ready:
+	rm -rf $(SOUNDS_DIR).tmp $(SOUNDS_DIR)
+	git clone --quiet '$(SOUNDS_REPO)' $(SOUNDS_DIR).tmp
+	git -C $(SOUNDS_DIR).tmp checkout --quiet --detach '$(SOUNDS_REV)'
+	mv $(SOUNDS_DIR).tmp $(SOUNDS_DIR)
+	touch $@
+
+$(MEDIA_DIR)/thunder-rain.s16: $(SOUNDS_DIR)/.ready
+	mkdir -p $(@D)
+	source=$$(awk -F '\t' '$$1 == "thunder-rain-veranda" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
+$(MEDIA_DIR)/iceberg-contact.s16: $(SOUNDS_DIR)/.ready
+	mkdir -p $(@D)
+	source=$$(awk -F '\t' '$$1 == "noaa-iceberg-harmonic-tremor" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
+$(MEDIA_DIR)/dvorak-largo.s16: $(SOUNDS_DIR)/.ready
+	mkdir -p $(@D)
+	source=$$(awk -F '\t' '$$1 == "dvorak-new-world-largo" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -ss 60 -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
+$(MEDIA_DIR)/bartok-sonatina.s16: $(SOUNDS_DIR)/.ready
+	mkdir -p $(@D)
+	source=$$(awk -F '\t' '$$1 == "bartok-sonatina" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -ss 10 -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
+$(MEDIA_DIR)/russolo-corale.s16: $(SOUNDS_DIR)/.ready
+	mkdir -p $(@D)
+	source=$$(awk -F '\t' '$$1 == "russolo-corale" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
+$(MEDIA_DIR)/russolo-serenata.s16: $(SOUNDS_DIR)/.ready
+	mkdir -p $(@D)
+	source=$$(awk -F '\t' '$$1 == "russolo-serenata" {print $$2}' $(SOUNDS_DIR)/manifest.tsv); test -n "$$source"; ffmpeg -nostdin -loglevel error -y -i "$(SOUNDS_DIR)/$$source" -t $(MEDIA_SECONDS) -ac 1 -ar $(MEDIA_RATE) -f s16le $@
+
+MEDIA_CODE = \
+	fourier/pcm_block.c \
+	fourier/framing.c \
+	fourier/fft.c \
+	fourier/complex_field.c \
+	render/wegert.c \
+	render/ppm.c \
+	audio/interface/speaker_input.c
+
+$(BUILD)/media-fixture-test: tests/media_fixture_test.c $(MEDIA_CODE) $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/media_fixture_test.c $(MEDIA_CODE) -lm -o $@
+
+media-fetch: $(MEDIA_FIXTURES)
+
+media-test: media-fetch $(BUILD)/media-fixture-test
+	$(BUILD)/media-fixture-test $(MEDIA_FIXTURES)
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
