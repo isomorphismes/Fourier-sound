@@ -9,11 +9,13 @@ typedef int32_t aaudio_stream_state_t;
 typedef int32_t aaudio_data_callback_result_t;
 typedef struct AAudioStream AAudioStream;
 typedef struct AAudioStreamBuilder AAudioStreamBuilder;
-enum { AAUDIO_OK = 0, AAUDIO_UNSPECIFIED = 0, AAUDIO_DIRECTION_INPUT = 1,
-       AAUDIO_SHARING_MODE_SHARED = 1, AAUDIO_FORMAT_PCM_FLOAT = 2,
-       AAUDIO_FORMAT_PCM_I16 = 1, AAUDIO_CALLBACK_RESULT_CONTINUE = 0,
-       AAUDIO_STREAM_STATE_STARTED = 4, AAUDIO_STREAM_STATE_STOPPING = 9, AAUDIO_STREAM_STATE_STOPPED = 10,
-       AAUDIO_STREAM_STATE_DISCONNECTED = 13 };
+enum { AAUDIO_OK = 0, AAUDIO_UNSPECIFIED = 0,
+       AAUDIO_DIRECTION_OUTPUT = 0, AAUDIO_DIRECTION_INPUT = 1,
+       AAUDIO_SHARING_MODE_SHARED = 1, AAUDIO_FORMAT_INVALID = -1,
+       AAUDIO_FORMAT_PCM_FLOAT = 2, AAUDIO_FORMAT_PCM_I16 = 1,
+       AAUDIO_CALLBACK_RESULT_CONTINUE = 0,
+       AAUDIO_STREAM_STATE_STARTED = 4, AAUDIO_STREAM_STATE_STOPPING = 9,
+       AAUDIO_STREAM_STATE_STOPPED = 10, AAUDIO_STREAM_STATE_DISCONNECTED = 13 };
 enum { AAUDIO_ERROR_DISCONNECTED = -1, AAUDIO_ERROR_NO_MEMORY = -2,
        AAUDIO_ERROR_UNAVAILABLE = -3, AAUDIO_ERROR_INVALID_FORMAT = -4,
        AAUDIO_ERROR_INVALID_RATE = -5, AAUDIO_ERROR_INVALID_STATE = -6,
@@ -36,6 +38,8 @@ aaudio_format_t AAudioStream_getFormat(AAudioStream *);
 aaudio_result_t AAudioStream_requestStart(AAudioStream *);
 aaudio_result_t AAudioStream_requestStop(AAudioStream *);
 aaudio_stream_state_t AAudioStream_getState(AAudioStream *);
-aaudio_result_t AAudioStream_waitForStateChange(AAudioStream *, aaudio_stream_state_t, aaudio_stream_state_t *, int64_t);
+aaudio_result_t AAudioStream_waitForStateChange(AAudioStream *, aaudio_stream_state_t,
+                                                aaudio_stream_state_t *, int64_t);
+aaudio_result_t AAudioStream_write(AAudioStream *, const void *, int32_t, int64_t);
 aaudio_result_t AAudioStream_close(AAudioStream *);
 #endif
