@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'release/miro-stripped'
+      - 'fix/miro-smooth-render'
   workflow_dispatch:
 
 permissions:
