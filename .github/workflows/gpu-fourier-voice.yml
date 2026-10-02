@@ -55,30 +55,7 @@ jobs:
           grep -q 'Class:.*ELF32' build/gpu-final.elf
           grep -q 'Machine:.*ARM' build/gpu-final.elf
           ! "$toolchain/llvm-readelf" -S "$so" | grep -q '\.debug_'
-          ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex
-
-      - name: Record artifact size
-        shell: bash
-        run: |
-          set -euxo pipefail
-          {
-            printf 'artifact\tbytes\n'
-            printf 'gpu_so\t%s\n' "$(stat -c %s build/release/gpu/lib/armeabi-v7a/libfourier_voice.so)"
-            printf 'gpu_apk\t%s\n' "$(stat -c %s build/fourier-voice-gpu-miro-release.apk)"
-            printf 'gpu_debug\t%s\n' "$(stat -c %s build/symbols/gpu/libfourier_voice.so.debug)"
-          } | tee build/gpu-release-sizes.tsv
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fourier-voice-gpu-miro-a1
-          path: |
-            build/fourier-voice-gpu-miro-release.apk
-            build/fourier-voice-gpu-miro-release.apk.sha256
-            build/gpu-release-sizes.tsv
-            build/gpu-final.elf
-            build/symbols/gpu/libfourier_voice.so.debug
-          if-no-files-found: error
-
+          ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex$'
           "$toolchain/llvm-nm" -D "$so" | grep -q ' U glDispatchCompute'
           "$toolchain/llvm-nm" -D "$so" | grep -q ' U glBindBufferBase'
           "$toolchain/llvm-nm" -D "$so" | grep -q ' U eglSwapBuffers'
