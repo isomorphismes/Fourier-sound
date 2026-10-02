@@ -33,6 +33,13 @@
 
 bool microphone_permission(ANativeActivity *activity);
 
+#ifdef FOURIER_USE_ICK_POLYNOMIAL
+void fourier_polynomial_cartesian_ick(
+    const double *coefficients_cartesian, unsigned int coefficient_count,
+    unsigned int term_count, double z_real, double z_imag,
+    double output_cartesian[static 2]);
+#endif
+
 struct spectral_peak {
     size_t bin;
     double magnitude;
@@ -192,6 +199,37 @@ static void log_spectrum(
         peaks[4].bin, frequency[4], peaks[4].magnitude, phase[4]);
 }
 
+#ifdef FOURIER_USE_ICK_POLYNOMIAL
+static bool ick_polynomial_self_test(void)
+{
+    const struct complex_value coefficients[] = {
+        {1.0, 0.0},
+        {2.0, 3.0},
+        {-0.5, 1.0}
+    };
+    double packed[6];
+    for (size_t index = 0U; index < 3U; ++index) {
+        packed[index * 2U] = coefficients[index].real;
+        packed[index * 2U + 1U] = coefficients[index].imaginary;
+    }
+
+    struct complex_value z = {0.25, -0.5};
+    struct complex_value reference = fourier_polynomial_value(
+        coefficients, 3U, 3U, z);
+    double output[2];
+    fourier_polynomial_cartesian_ick(
+        packed, 3U, 3U, z.real, z.imaginary, output);
+
+    bool passed =
+        near(output[0], reference.real, 1e-12) &&
+        near(output[1], reference.imaginary, 1e-12);
+    LOG("VOICE_ICK_SELF_TEST status=%s got=(%.12g,%.12g) ref=(%.12g,%.12g)",
+        passed ? "PASS" : "FAIL",
+        output[0], output[1], reference.real, reference.imaginary);
+    return passed;
+}
+#endif
+
 static bool render_voice(struct application *a)
 {
     float samples[SAMPLE_COUNT];
@@ -215,6 +253,13 @@ static bool render_voice(struct application *a)
     log_spectrum(a, coefficients, input_rms, framed_rms, frame_number);
 
     struct rgb24 pixels[RENDER_PIXELS];
+#ifdef FOURIER_USE_ICK_POLYNOMIAL
+    double packed_coefficients[TERM_COUNT * 2U];
+    for (size_t index = 0U; index < TERM_COUNT; ++index) {
+        packed_coefficients[index * 2U] = coefficients[index].real;
+        packed_coefficients[index * 2U + 1U] = coefficients[index].imaginary;
+    }
+#endif
     for (size_t row = 0U; row < RENDER_HEIGHT; ++row) {
         double y = FIELD_Y_RADIUS -
             2.0 * FIELD_Y_RADIUS * (double)row /
@@ -223,9 +268,18 @@ static bool render_voice(struct application *a)
             double x = -FIELD_X_RADIUS +
                 2.0 * FIELD_X_RADIUS * (double)column /
                 (double)(RENDER_WIDTH - 1U);
-            struct complex_value value = fourier_polynomial_value(
+            struct complex_value value;
+#ifdef FOURIER_USE_ICK_POLYNOMIAL
+            double output[2];
+            fourier_polynomial_cartesian_ick(
+                packed_coefficients, TERM_COUNT, TERM_COUNT,
+                x, y, output);
+            value = (struct complex_value){output[0], output[1]};
+#else
+            value = fourier_polynomial_value(
                 coefficients, SAMPLE_COUNT, TERM_COUNT,
                 (struct complex_value){x, y});
+#endif
             size_t pixel = row * RENDER_WIDTH + column;
             if (!wegert_color_complex(value, &pixels[pixel])) return false;
         }
@@ -383,6 +437,12 @@ void android_main(struct android_app *app)
 
     LOG("VOICE_APP started");
     (void)coefficient_self_test();
+#ifdef FOURIER_USE_ICK_POLYNOMIAL
+    (void)ick_polynomial_self_test();
+    LOG("VOICE_COMPILER_PATH polynomial=ICK armv7-thumb2 link=Android-NDK");
+#else
+    LOG("VOICE_COMPILER_PATH polynomial=NDK-clang");
+#endif
 
     while (!app->destroyRequested) {
         struct android_poll_source *source = NULL;
