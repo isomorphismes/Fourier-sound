@@ -7,7 +7,7 @@ WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Iacceptance
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
 HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h acceptance/*.h)
-RENDER = fourier/dft.c fourier/complex_field.c render/wegert.c render/ppm.c
+RENDER = fourier/dft.c fourier/complex_field.c fourier/sparse_series.c render/wegert.c render/ppm.c
 ANDROID_HOME ?= /opt/android-sdk
 NDK ?= $(ANDROID_HOME)/ndk/27.2.12479018
 TOOLCHAIN = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/bin
@@ -40,12 +40,17 @@ $(BUILD)/render-test: tests/render_test.c fourier/pcm_block.c $(RENDER) $(HEADER
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/render_test.c fourier/pcm_block.c $(RENDER) -lm -o $@
 
-test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test
+$(BUILD)/sparse-series-test: tests/sparse_series_test.c fourier/sparse_series.c fourier/complex_field.c $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/sparse_series_test.c fourier/sparse_series.c fourier/complex_field.c -lm -o $@
+
+test: $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/sparse-series-test
 	$(BUILD)/pcm-test
 	$(BUILD)/backend-test
 	$(BUILD)/output-backend-test
 	$(BUILD)/speaker-input-test
 	$(BUILD)/render-test $(BUILD)/fourier-render.ppm
+	$(BUILD)/sparse-series-test
 
 define android_abi
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
