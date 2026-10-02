@@ -1,5 +1,9 @@
 # Architecture
 
+The first implemented microphone boundary and its limits are documented in
+[Native microphone boundary](audio-input.md). This design document retains the
+broader decomposition, construction and rendering plan.
+
 Fourier-sound should separate four independent questions:
 
 1. How do bytes/samples enter or leave the phone?

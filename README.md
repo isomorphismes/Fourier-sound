@@ -58,6 +58,17 @@ The application should depend on the small generic acquisition/sink contract, no
 
 See [docs/architecture.md](docs/architecture.md).
 
+## First native audio implementation
+
+The audio branch adds a plain C microphone source, an AAudio backend, a bounded
+PCM buffer and a native acceptance APK. Captured PCM also passes through
+`fourier/pcm_block`, an Android-free conversion boundary for mathematical code.
+It introduces no decomposition algorithm or visualization.
+
+Run `make test` for host checks. See [audio implementation](docs/audio-input.md)
+for the accelerometer comparison and [acceptance](docs/acceptance.md) for APK
+builds and the MIRO A1 procedure.
+
 ## References
 
 - [phyphox audio spectrum](https://phyphox.org/experiment/audio-spectrum/) — microphone blocks analyzed with a Fourier transform.

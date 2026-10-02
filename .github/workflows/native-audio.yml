@@ -1,0 +1,74 @@
+name: native audio
+on:
+  push:
+    branches: [main, 'audio/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Deterministic host and simulated backend tests
+        run: make test
+      - name: Address and undefined behavior sanitizers
+        run: make test BUILD=build-sanitized CFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Stable public test signer used by accelerometer
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphismes/wegert
+          ref: 89dcfb840cec1a66ee04c7f7404954cbd6c09839
+          path: .test-signing
+          sparse-checkout: _/build/app/wegert-debug.keystore
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018'
+      - name: Build APKs from clean checkout and inspect signatures, alignment, DEX absence and ELF identity
+        run: make android
+      - name: Source revision
+        run: git rev-parse HEAD > build/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fourier-audio-miro-a1-armeabi-v7a-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/fourier-microphone-armeabi-v7a.apk
+            build/fourier-microphone-armeabi-v7a.apk.sha256
+            build/fourier-speaker-armeabi-v7a.apk
+            build/fourier-speaker-armeabi-v7a.apk.sha256
+            build/source-commit.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fourier-audio-tab-p10-arm64-v8a-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/fourier-microphone-arm64-v8a.apk
+            build/fourier-microphone-arm64-v8a.apk.sha256
+            build/fourier-speaker-arm64-v8a.apk
+            build/fourier-speaker-arm64-v8a.apk.sha256
+            build/source-commit.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fourier-audio-x86_64-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            build/fourier-microphone-x86_64.apk
+            build/fourier-microphone-x86_64.apk.sha256
+            build/fourier-speaker-x86_64.apk
+            build/fourier-speaker-x86_64.apk.sha256
+            build/source-commit.txt
+          if-no-files-found: error

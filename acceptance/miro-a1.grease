@@ -1,0 +1,42 @@
+#!/usr/bin/env grease
+# Run under the existing Grease runtime on an adb-connected host or Termux.
+# Inputs: exact adb serial, absolute downloaded APK path, expected SHA-256.
+# No compilation, package-manager installation, uninstall, or log clearing.
+set -o errexit
+set -o pipefail
+if (len(ARGV) !== 3) {
+  printf '\033[31mFAIL\033[0m usage: grease miro-a1.grease SERIAL /absolute/test.apk SHA256\n'
+  exit 2
+}
+var serial = ARGV[0]
+var apk = ARGV[1]
+var digest = ARGV[2]
+var adb = $(command -v adb)
+var absolute_apk = $(realpath "$apk")
+if (adb === '' or serial === '' or apk !== absolute_apk) {
+  printf '\033[31mFAIL\033[0m explicit adb device and absolute APK path required\n'
+  exit 2
+}
+printf '\033[36mCHECK\033[0m exact device, artifact, storage and installed state\n'
+var model = $($adb -s "$serial" shell getprop ro.product.model | tr -d '\r')
+var abi = $($adb -s "$serial" shell getprop ro.product.cpu.abi | tr -d '\r')
+if ((model !== 'MIRO A1' and model !== 'MIRO_A1') or abi !== 'armeabi-v7a') {
+  printf '\033[31mFAIL\033[0m expected MIRO A1 armeabi-v7a, got %s %s\n' "$model" "$abi"
+  exit 2
+}
+$adb -s "$serial" shell getprop ro.build.fingerprint
+$adb -s "$serial" shell getprop ro.build.version.release
+$adb -s "$serial" shell getprop ro.build.version.sdk
+$adb -s "$serial" shell uname -m
+$adb -s "$serial" shell df -k /data
+test -f "$apk"
+printf '%s  %s\n' "$digest" "$apk" | sha256sum -c -
+wc -c < "$apk"
+$adb -s "$serial" shell dumpsys package org.isomorphismes.fouriersound
+printf '\033[36mINSTALL\033[0m replacement install; Android rejects incompatible signer/version\n'
+$adb -s "$serial" install -r "$apk"
+$adb -s "$serial" shell pm grant org.isomorphismes.fouriersound android.permission.RECORD_AUDIO
+printf '\033[36mRUN\033[0m speak or tap near microphone for five seconds; Ctrl-C after MIC_RESULT\n'
+$adb -s "$serial" shell am force-stop org.isomorphismes.fouriersound
+$adb -s "$serial" shell am start -W -n org.isomorphismes.fouriersound/android.app.NativeActivity
+$adb -s "$serial" logcat -v threadtime -s FourierMic:I '*:S'
