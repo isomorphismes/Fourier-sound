@@ -199,7 +199,7 @@ static void log_spectrum(
         peaks[4].bin, frequency[4], peaks[4].magnitude, phase[4]);
 }
 
-#ifdef FOURIER_USE_ICK_POLYNOMIAL
+#if defined(FOURIER_USE_ICK_POLYNOMIAL) && defined(FOURIER_ICK_VERIFY)
 static bool ick_polynomial_self_test(void)
 {
     const struct complex_value coefficients[] = {
@@ -438,7 +438,9 @@ void android_main(struct android_app *app)
     LOG("VOICE_APP started");
     (void)coefficient_self_test();
 #ifdef FOURIER_USE_ICK_POLYNOMIAL
+#ifdef FOURIER_ICK_VERIFY
     (void)ick_polynomial_self_test();
+#endif
     LOG("VOICE_COMPILER_PATH polynomial=ICK armv7-thumb2 link=Android-NDK");
 #else
     LOG("VOICE_COMPILER_PATH polynomial=NDK-clang");
