@@ -17,7 +17,7 @@ ANDROID_JAR = $(ANDROID_HOME)/platforms/android-36/android.jar
 ANDROID_KEYSTORE ?= .test-signing/_/build/app/wegert-debug.keystore
 VERSION_CODE ?= 1
 
-.PHONY: all test android android-ick-armv7 android-miro-release android-ick-miro-release miro-release-compare
+.PHONY: all test android android-ick-armv7 android-miro-release android-ick-miro-release android-gpu-miro-release miro-release-compare
 all: test
 
 $(BUILD)/pcm-test: tests/pcm_test.c $(COMMON) $(HEADERS)
@@ -255,3 +255,43 @@ $(BUILD)/fourier-voice-ick-miro-release.apk: $(BUILD)/release/ick/lib/armeabi-v7
 android-miro-release: $(BUILD)/fourier-voice-miro-release.apk
 android-ick-miro-release: $(BUILD)/fourier-voice-ick-miro-release.apk
 miro-release-compare: android-miro-release android-ick-miro-release
+
+
+# MIRO A1 GPU-resident Fourier Voice.  PCM framing remains on the CPU for this
+# slice; one framed real block is uploaded, then the FFT spectrum stays in
+# SSBOs through the Wegert fragment pass.  No coefficient buffer is read back.
+GPU_VOICE_SOURCES = android/gpu_voice_main.c android/permission.c \
+	audio/android/aaudio_input.c audio/interface/pcm_ring.c \
+	audio/interface/audio_result.c fourier/pcm_block.c fourier/framing.c \
+	render/android/gpu_voice_pipeline.c
+
+$(BUILD)/android/armeabi-v7a/voice-gpu-unstripped/lib/armeabi-v7a/libfourier_voice.so: $(GPU_VOICE_SOURCES) $(HEADERS) $(BUILD)/android/armeabi-v7a/glue.o
+	mkdir -p $(@D)
+	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang -std=c17 -O2 -g $(WARN) \
+		-mthumb -march=armv7-a $(INCLUDES) -isystem $(GLUE) \
+		-fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared \
+		-Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 \
+		$(GPU_VOICE_SOURCES) $(BUILD)/android/armeabi-v7a/glue.o \
+		-laaudio -landroid -llog -lEGL -lGLESv3 -lm -o $@
+
+$(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-gpu-unstripped/lib/armeabi-v7a/libfourier_voice.so
+	mkdir -p $(@D) $(BUILD)/symbols/gpu
+	$(TOOLCHAIN)/llvm-objcopy --only-keep-debug $< $(BUILD)/symbols/gpu/libfourier_voice.so.debug
+	cp $< $@
+	$(TOOLCHAIN)/llvm-strip --strip-unneeded $@
+	! $(TOOLCHAIN)/llvm-readelf -S $@ | grep -q '\.debug_'
+	$(TOOLCHAIN)/llvm-readelf -h $@
+
+$(BUILD)/fourier-voice-gpu-miro-release.apk: $(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so android/GpuVoiceManifest.xml
+	$(TOOLS)/aapt2 link -I $(ANDROID_JAR) --manifest android/GpuVoiceManifest.xml --min-sdk-version 26 --target-sdk-version 36 --version-code 5 --version-name 0.5.0-gpu -o $(BUILD)/android/armeabi-v7a/voice-gpu-release-unsigned.apk
+	cd $(BUILD)/release/gpu && zip -0 -q -r ../../android/armeabi-v7a/voice-gpu-release-unsigned.apk lib
+	$(TOOLS)/zipalign -f -P 16 4 $(BUILD)/android/armeabi-v7a/voice-gpu-release-unsigned.apk $(BUILD)/android/armeabi-v7a/voice-gpu-release-aligned.apk
+	$(TOOLS)/apksigner sign --ks $(ANDROID_KEYSTORE) --ks-key-alias wegert-debug --ks-pass pass:wegert-debug --key-pass pass:wegert-debug --out $@ $(BUILD)/android/armeabi-v7a/voice-gpu-release-aligned.apk
+	$(TOOLS)/apksigner verify --verbose --print-certs $@
+	$(TOOLS)/zipalign -c -P 16 4 $@
+	unzip -Z1 $@ > $(BUILD)/android/armeabi-v7a/voice-gpu-release-entries.txt
+	! grep -E '(^|/)classes[0-9]*\.dex$$' $(BUILD)/android/armeabi-v7a/voice-gpu-release-entries.txt
+	$(TOOLCHAIN)/llvm-readelf -h $(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so
+	sha256sum $@ > $@.sha256
+
+android-gpu-miro-release: $(BUILD)/fourier-voice-gpu-miro-release.apk
