@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - 'ick/fourier-voice-miro-a1'
-      - 'perf/ick-polynomial-horner'
   pull_request:
     branches:
       - 'audio/fourier-voice-diagnostics'
