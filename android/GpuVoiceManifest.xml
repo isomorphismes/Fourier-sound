@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.isomorphismes.fouriersound.voice">
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="true" />
+    <uses-feature android:glEsVersion="0x00030001" android:required="true" />
+    <application android:allowBackup="false" android:hasCode="false"
+        android:extractNativeLibs="false" android:label="Fourier Voice GPU"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+        <activity android:name="android.app.NativeActivity" android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden|screenSize">
+            <meta-data android:name="android.app.lib_name"
+                android:value="fourier_voice" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
