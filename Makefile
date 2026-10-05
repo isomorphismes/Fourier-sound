@@ -201,7 +201,7 @@ $(BUILD)/fourier-voice-ick-armeabi-v7a.apk: $(BUILD)/android/armeabi-v7a/voice-i
 	grep -Fq 'Signer #1 certificate SHA-256 digest: de9b1d47c5a65e6d46a204b79dd9ee566b9d3c9832ba81ebc4213d3392e92ff9' $(BUILD)/android/armeabi-v7a/voice-ick-signer.txt
 	$(TOOLS)/zipalign -c -P 16 4 $@
 	unzip -Z1 $@ > $(BUILD)/android/armeabi-v7a/voice-ick-entries.txt
-	! grep -E '(^|/)classes[0-9]*\.dex$' $(BUILD)/android/armeabi-v7a/voice-ick-entries.txt
+	! grep -E '(^|/)classes[0-9]*\.dex$$' $(BUILD)/android/armeabi-v7a/voice-ick-entries.txt
 	$(TOOLCHAIN)/llvm-readelf -h $(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so
 	sha256sum $@ > $@.sha256
 

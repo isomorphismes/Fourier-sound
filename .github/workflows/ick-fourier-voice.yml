@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - 'ick/fourier-voice-miro-a1'
+  pull_request:
+    branches:
+      - 'audio/fourier-voice-diagnostics'
+    paths:
+      - 'fourier/ick_polynomial_leaf.c'
+      - 'tests/ick_polynomial_leaf_test.c'
+      - 'android/voice_main.c'
+      - 'Makefile'
+      - '.github/workflows/ick-fourier-voice.yml'
   workflow_dispatch:
 
 permissions:
@@ -140,10 +149,11 @@ jobs:
           unzip -p build/fourier-voice-ick-armeabi-v7a.apk \
             lib/armeabi-v7a/libfourier_voice.so \
             > build/libfourier_voice-ick.so
-          llvm-readelf -h build/libfourier_voice-ick.so | tee build/ick-final.elf
+          ndk_llvm="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          "$ndk_llvm/llvm-readelf" -h build/libfourier_voice-ick.so | tee build/ick-final.elf
           grep -q 'Class:.*ELF32' build/ick-final.elf
           grep -q 'Machine:.*ARM' build/ick-final.elf
-          llvm-nm build/libfourier_voice-ick.so \
+          "$ndk_llvm/llvm-nm" build/libfourier_voice-ick.so \
             | grep -q 'fourier_polynomial_cartesian_ick'
 
       - uses: actions/upload-artifact@v4
