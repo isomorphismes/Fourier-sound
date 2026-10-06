@@ -10,8 +10,9 @@ permissions:
   contents: read
 
 env:
-  ICK_COMMIT: 2176498723bf01792236cef3bebf349822cae496
+  ICK_COMMIT: 79eccb8ff232e05bdbb9e345fc224f251636b43f
   ANDROID_NDK_VERSION: 27.2.12479018
+  ANDROID_SOURCE_COMMIT: ${{ github.sha }}
 
 jobs:
   build:
@@ -76,13 +77,13 @@ jobs:
           make -C build/ick-build install-gcc
           build/ick-stage/bin/arm-linux-gnueabi-gcc --version
 
-      - name: Compile Fourier polynomial leaf with ICK Thumb-2
+      - name: Compile Fourier polynomial leaf with ICK A32 (application remains NDK)
         shell: bash
         run: |
           set -euxo pipefail
           ick="$GITHUB_WORKSPACE/build/ick-stage/bin/arm-linux-gnueabi-gcc"
           "$ick" \
-            -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=softfp \
+            -march=armv7-a -marm -mfpu=vfpv3-d16 -mfloat-abi=softfp \
             -std=c11 -O2 -fPIC -ffreestanding -nostdinc \
             -fvisibility=hidden \
             -c fourier/ick_polynomial_leaf.c \
@@ -94,7 +95,11 @@ jobs:
             | tee build/ick/armeabi-v7a/ick-leaf.attributes
           grep -q 'Machine:.*ARM' build/ick/armeabi-v7a/ick-leaf.elf
           grep -q 'Tag_CPU_arch: v7' build/ick/armeabi-v7a/ick-leaf.attributes
-          grep -q 'Tag_THUMB_ISA_use: Thumb-2' build/ick/armeabi-v7a/ick-leaf.attributes
+          grep -q 'Tag_ARM_ISA_use: Yes' build/ick/armeabi-v7a/ick-leaf.attributes
+          grep -q 'Tag_ABI_align_needed: 8-byte' build/ick/armeabi-v7a/ick-leaf.attributes
+          arm-linux-gnueabi-readelf -s build/ick/armeabi-v7a/fourier_voice_leaf.o > build/ick/armeabi-v7a/ick-leaf.symbols
+          grep -q '\$a' build/ick/armeabi-v7a/ick-leaf.symbols
+          ! grep -q '\$t' build/ick/armeabi-v7a/ick-leaf.symbols
           if grep -q 'Tag_ABI_VFP_args: VFP registers' build/ick/armeabi-v7a/ick-leaf.attributes; then
             echo 'hard-float ABI is not Android armeabi-v7a' >&2
             exit 1
@@ -104,6 +109,14 @@ jobs:
 
       - name: Run host reference tests
         run: make test
+
+      - name: Shared NativeActivity packager
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/android-NDK
+          ref: 7c61ee43e75f7c2dab9288edb0e10055898b36e6
+          path: .android-ndk
+          sparse-checkout: apk
 
       - name: Stable public test signer
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -128,7 +141,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          make android-ick-armv7 miro-release-compare \
+          make android-ick-leaf-armv7 miro-release-compare \
             ICK_ARMV7_OBJECT="$GITHUB_WORKSPACE/build/ick/armeabi-v7a/fourier_voice_leaf.o"
           printf '%s\n' "$ICK_COMMIT" > build/ick-source-commit.txt
           git rev-parse HEAD > build/fourier-sound-source-commit.txt
@@ -140,7 +153,7 @@ jobs:
           ndk_so=build/release/ndk/lib/armeabi-v7a/libfourier_voice.so
           ick_so=build/release/ick/lib/armeabi-v7a/libfourier_voice.so
           ndk_apk=build/fourier-voice-miro-release.apk
-          ick_apk=build/fourier-voice-ick-miro-release.apk
+          ick_apk=build/fourier-voice-ick-leaf-miro-release.apk
           ndk_debug=build/symbols/ndk/libfourier_voice.so.debug
           ick_debug=build/symbols/ick/libfourier_voice.so.debug
           {
@@ -170,28 +183,28 @@ jobs:
             if [ "$variant" = ndk ]; then
               apk=build/fourier-voice-miro-release.apk
             else
-              apk=build/fourier-voice-ick-miro-release.apk
+              apk=build/fourier-voice-ick-leaf-miro-release.apk
             fi
             unzip -p "$apk" lib/armeabi-v7a/libfourier_voice.so > "build/libfourier_voice-$variant.so"
-            llvm-readelf -h "build/libfourier_voice-$variant.so" | tee "build/$variant-final.elf"
+            "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -h "build/libfourier_voice-$variant.so" | tee "build/$variant-final.elf"
             grep -q 'Class:.*ELF32' "build/$variant-final.elf"
             grep -q 'Machine:.*ARM' "build/$variant-final.elf"
-            ! llvm-readelf -S "build/libfourier_voice-$variant.so" | grep -q '\.debug_'
+            ! "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -S "build/libfourier_voice-$variant.so" | grep -q '\.debug_'
             ! unzip -Z1 "$apk" | grep -E '(^|/)classes[0-9]*\.dex$'
           done
-          llvm-nm build/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so \
+          "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm" build/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so \
             | grep -q 'fourier_polynomial_cartesian_ick'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fourier-voice-ick-miro-a1-${{ github.sha }}
+          name: fourier-voice-ick-leaf-miro-a1-${{ github.sha }}
           path: |
-            build/fourier-voice-ick-armeabi-v7a.apk
-            build/fourier-voice-ick-armeabi-v7a.apk.sha256
+            build/fourier-voice-ick-leaf-armeabi-v7a.apk
+            build/fourier-voice-ick-leaf-armeabi-v7a.apk.sha256
             build/fourier-voice-miro-release.apk
             build/fourier-voice-miro-release.apk.sha256
-            build/fourier-voice-ick-miro-release.apk
-            build/fourier-voice-ick-miro-release.apk.sha256
+            build/fourier-voice-ick-leaf-miro-release.apk
+            build/fourier-voice-ick-leaf-miro-release.apk.sha256
             build/miro-release-sizes.tsv
             build/symbols/ndk/libfourier_voice.so.debug
             build/symbols/ick/libfourier_voice.so.debug

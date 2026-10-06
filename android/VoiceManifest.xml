@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="true" />
     <application android:allowBackup="false" android:hasCode="false"
-        android:extractNativeLibs="false" android:label="Fourier Voice"
+        android:extractNativeLibs="true" android:label="Fourier Voice"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name="android.app.NativeActivity" android:exported="true"
             android:screenOrientation="portrait"

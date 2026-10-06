@@ -8,11 +8,20 @@ Android runtime, emulator or microphone test.
 
 Clean Android builds run in `.github/workflows/native-audio.yml`, with NDK
 27.2.12479018, SDK 36/build-tools 36.0.0, minimum API 26, and ARMv7 Thumb, AArch64
-and x86_64 packages. Local equivalent: `make android` with `ANDROID_HOME` pointing
+and x86_64 packages. Current ARMv7 application compilation uses A32/softfp;
+the older Thumb result is historical. Local equivalent: `make android` with `ANDROID_HOME` pointing
 to those installed tools and `ANDROID_KEYSTORE` to the same persistent test key.
 The pinned signer checkout is specified in the workflow. Never create a fresh
 temporary key or uninstall to solve a signer conflict. Java is used by Android's
 SDK signing utility only; no app Java/Kotlin/DEX or Gradle build is involved.
+
+Materialize the exact android-NDK revision in `ci/platforms.tsv` at
+`ANDROID_NDK_REPO` (default `.android-ndk`). Packaging calls its maintained
+`apk/build-nativeactivity-apk.sh`; application code does not duplicate the
+generic packager. The manifests allow Android to extract compressed native
+libraries, as used by that packager. This replaces the old application-local
+uncompressed/mmap packaging recipes. Package names, versions and the persistent
+certificate are preserved.
 
 The workflow verifies native-only APK contents, ELF identity, APK alignment and
 the existing public test signer fingerprint, then uploads APKs, SHA-256 files and

@@ -13,6 +13,8 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      ANDROID_SOURCE_COMMIT: ${{ github.sha }}
     steps:
       - name: Check out Fourier Voice
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -21,6 +23,14 @@ jobs:
 
       - name: Run host reference tests
         run: make test
+
+      - name: Shared NativeActivity packager
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/android-NDK
+          ref: 7c61ee43e75f7c2dab9288edb0e10055898b36e6
+          path: .android-ndk
+          sparse-checkout: apk
 
       - name: Stable public test signer
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -74,10 +84,11 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fourier-voice-gpu-miro-a1
+          name: fourier-voice-gpu-miro-a1-${{ github.sha }}
           path: |
             build/fourier-voice-gpu-miro-release.apk
             build/fourier-voice-gpu-miro-release.apk.sha256
+            build/fourier-voice-gpu-miro-release.receipt.tsv
             build/gpu-release-sizes.tsv
             build/gpu-final.elf
             build/symbols/gpu/libfourier_voice.so.debug

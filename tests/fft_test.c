@@ -90,10 +90,16 @@ static void realistic_block(void)
 
     assert(fabs(coefficients[0].real - 0.1) < 1e-7);
     assert(fabs(coefficients[0].imaginary) < 1e-10);
+
     assert(fabs(coefficients[123].real - 0.35) < 1e-7);
     assert(fabs(coefficients[123].imaginary) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 123U].real - 0.35) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 123U].imaginary) < 1e-7);
+
     assert(fabs(coefficients[777].real) < 1e-7);
     assert(fabs(coefficients[777].imaginary - 0.1) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 777U].real) < 1e-7);
+    assert(fabs(coefficients[REALISTIC_COUNT - 777U].imaginary + 0.1) < 1e-7);
 
     double sample_energy = 0.0;
     double coefficient_energy = 0.0;
@@ -105,11 +111,13 @@ static void realistic_block(void)
         coefficient_energy +=
             coefficients[k].real * coefficients[k].real +
             coefficients[k].imaginary * coefficients[k].imaginary;
+
         size_t mirror = (REALISTIC_COUNT - k) % REALISTIC_COUNT;
         assert(fabs(coefficients[k].real - coefficients[mirror].real) < 2e-9);
         assert(fabs(coefficients[k].imaginary +
                     coefficients[mirror].imaginary) < 2e-9);
     }
+
     assert(fabs(sample_energy - coefficient_energy) < 2e-9);
 }
 
@@ -117,10 +125,13 @@ static void rejected_inputs(void)
 {
     struct complex_value output[8];
     float samples[8] = {0};
+
     assert(!fourier_fft_real_radix2(NULL, 8U, output, 8U));
     assert(!fourier_fft_real_radix2(samples, 0U, output, 8U));
     assert(!fourier_fft_real_radix2(samples, 3U, output, 8U));
+    assert(!fourier_fft_real_radix2(samples, 6U, output, 8U));
     assert(!fourier_fft_real_radix2(samples, 8U, output, 7U));
+
     samples[3] = NAN;
     assert(!fourier_fft_real_radix2(samples, 8U, output, 8U));
 }
@@ -131,6 +142,6 @@ int main(void)
     pseudo_random_signals();
     realistic_block();
     rejected_inputs();
-    puts("PASS radix-2 FFT matches DFT, harmonics, conjugacy and Parseval");
+    puts("PASS radix-2 FFT matches DFT, 4096-sample harmonics, conjugacy and Parseval");
     return 0;
 }

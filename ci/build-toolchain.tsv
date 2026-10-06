@@ -1,0 +1,3 @@
+build_id	target	toolchain	ick_revision	ick_status	ick_evidence
+voice-application	android-armeabi-v7a-api26	ndk	79eccb8ff232e05bdbb9e345fc224f251636b43f	gap:Bionic-nullability-and-availability-declarations	docs/functorial-c.md
+voice-polynomial-leaf	android-armeabi-v7a-api26	ick	79eccb8ff232e05bdbb9e345fc224f251636b43f	qualified	docs/functorial-c.md

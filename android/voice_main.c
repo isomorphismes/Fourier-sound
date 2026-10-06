@@ -4,6 +4,7 @@
 
 #include "aaudio_input.h"
 #include "complex_field.h"
+#include "complex_plot.h"
 #include "fft.h"
 #include "framing.h"
 #include "native_window_output.h"
@@ -25,7 +26,7 @@
 #define RENDER_WIDTH 96U
 #define RENDER_HEIGHT 192U
 #define RENDER_PIXELS (RENDER_WIDTH * RENDER_HEIGHT)
-#define FRAME_INTERVAL_MS 200
+#define FRAME_INTERVAL_MS 50
 #define PEAK_COUNT 5U
 #define FIELD_X_RADIUS 0.44
 #define FIELD_Y_RADIUS 0.88
@@ -230,60 +231,63 @@ static bool ick_polynomial_self_test(void)
 }
 #endif
 
-static bool render_voice(struct application *a)
+static bool frame_voice_spectrum(const struct application *a,
+    struct complex_value coefficients[SAMPLE_COUNT], double *input_rms, double *framed_rms)
 {
     float samples[SAMPLE_COUNT];
     memcpy(samples, a->recent, sizeof(samples));
 
-    double input_rms = 0.0;
-    double framed_rms = 0.0;
-    if (!fourier_frame_rms(samples, SAMPLE_COUNT, &input_rms) ||
+    if (!fourier_frame_rms(samples, SAMPLE_COUNT, input_rms) ||
         !fourier_frame_remove_mean(samples, SAMPLE_COUNT) ||
         !fourier_frame_apply_hann_periodic(samples, SAMPLE_COUNT) ||
-        !fourier_frame_rms(samples, SAMPLE_COUNT, &framed_rms))
+        !fourier_frame_rms(samples, SAMPLE_COUNT, framed_rms))
         return false;
 
-    struct complex_value coefficients[SAMPLE_COUNT];
     if (!fourier_fft_real_radix2(
             samples, SAMPLE_COUNT, coefficients, SAMPLE_COUNT))
         return false;
     coefficients[0] = (struct complex_value){0.0, 0.0};
+    return true;
+}
 
-    uint64_t frame_number = a->frame_number + 1U;
-    log_spectrum(a, coefficients, input_rms, framed_rms, frame_number);
+#ifdef FOURIER_USE_ICK_POLYNOMIAL
+static struct complex_value evaluate_ick_polynomial(const void *state, struct complex_value point)
+{
+    double output[2];
+    fourier_polynomial_cartesian_ick(state, TERM_COUNT, TERM_COUNT,
+                                    point.real, point.imaginary, output);
+    return (struct complex_value){output[0], output[1]};
+}
+#endif
 
-    struct rgb24 pixels[RENDER_PIXELS];
+static bool render_spectral_field(const struct complex_value coefficients[SAMPLE_COUNT],
+                                   struct rgb24 pixels[RENDER_PIXELS])
+{
 #ifdef FOURIER_USE_ICK_POLYNOMIAL
     double packed_coefficients[TERM_COUNT * 2U];
     for (size_t index = 0U; index < TERM_COUNT; ++index) {
         packed_coefficients[index * 2U] = coefficients[index].real;
         packed_coefficients[index * 2U + 1U] = coefficients[index].imaginary;
     }
-#endif
-    for (size_t row = 0U; row < RENDER_HEIGHT; ++row) {
-        double y = FIELD_Y_RADIUS -
-            2.0 * FIELD_Y_RADIUS * (double)row /
-            (double)(RENDER_HEIGHT - 1U);
-        for (size_t column = 0U; column < RENDER_WIDTH; ++column) {
-            double x = -FIELD_X_RADIUS +
-                2.0 * FIELD_X_RADIUS * (double)column /
-                (double)(RENDER_WIDTH - 1U);
-            struct complex_value value;
-#ifdef FOURIER_USE_ICK_POLYNOMIAL
-            double output[2];
-            fourier_polynomial_cartesian_ick(
-                packed_coefficients, TERM_COUNT, TERM_COUNT,
-                x, y, output);
-            value = (struct complex_value){output[0], output[1]};
+    struct complex_mapping mapping = {packed_coefficients, evaluate_ick_polynomial};
 #else
-            value = fourier_polynomial_value(
-                coefficients, SAMPLE_COUNT, TERM_COUNT,
-                (struct complex_value){x, y});
+    struct fourier_polynomial polynomial = {coefficients, SAMPLE_COUNT, TERM_COUNT};
+    struct complex_mapping mapping = {&polynomial, fourier_polynomial_evaluate};
 #endif
-            size_t pixel = row * RENDER_WIDTH + column;
-            if (!wegert_color_complex(value, &pixels[pixel])) return false;
-        }
-    }
+    struct complex_plot_domain domain = {FIELD_X_RADIUS, FIELD_Y_RADIUS, RENDER_WIDTH, RENDER_HEIGHT};
+    return complex_plot_raster(mapping, domain, pixels, RENDER_PIXELS);
+}
+
+static bool render_voice(struct application *a)
+{
+    struct complex_value coefficients[SAMPLE_COUNT];
+    double input_rms, framed_rms;
+    if (!frame_voice_spectrum(a, coefficients, &input_rms, &framed_rms)) return false;
+    uint64_t frame_number = a->frame_number + 1U;
+    if (frame_number == 1U || frame_number % 20U == 0U)
+        log_spectrum(a, coefficients, input_rms, framed_rms, frame_number);
+    struct rgb24 pixels[RENDER_PIXELS];
+    if (!render_spectral_field(coefficients, pixels)) return false;
 
     enum native_window_output_result result = android_window_present_rgb24(
         a->app->window, pixels, RENDER_WIDTH, RENDER_HEIGHT, RENDER_PIXELS);
@@ -293,14 +297,16 @@ static bool render_voice(struct application *a)
     }
 
     a->frame_number = frame_number;
-    LOG("VOICE_FRAME number=%" PRIu64
-        " rate=%u samples=%u window_ms=%.3f terms=%u size=%ux%u "
-        "field_x=%.2f field_y=%.2f field_max_radius=%.6f",
-        a->frame_number, a->properties.sample_rate, SAMPLE_COUNT,
-        1000.0 * (double)SAMPLE_COUNT / (double)a->properties.sample_rate,
-        TERM_COUNT, RENDER_WIDTH, RENDER_HEIGHT,
-        FIELD_X_RADIUS, FIELD_Y_RADIUS,
-        hypot(FIELD_X_RADIUS, FIELD_Y_RADIUS));
+    if (a->frame_number == 1U || a->frame_number % 20U == 0U) {
+        LOG("VOICE_FRAME number=%" PRIu64
+            " rate=%u samples=%u window_ms=%.3f terms=%u size=%ux%u "
+            "field_x=%.2f field_y=%.2f field_max_radius=%.6f",
+            a->frame_number, a->properties.sample_rate, SAMPLE_COUNT,
+            1000.0 * (double)SAMPLE_COUNT / (double)a->properties.sample_rate,
+            TERM_COUNT, RENDER_WIDTH, RENDER_HEIGHT,
+            FIELD_X_RADIUS, FIELD_Y_RADIUS,
+            hypot(FIELD_X_RADIUS, FIELD_Y_RADIUS));
+    }
     return true;
 }
 
@@ -441,7 +447,7 @@ void android_main(struct android_app *app)
 #ifdef FOURIER_ICK_VERIFY
     (void)ick_polynomial_self_test();
 #endif
-    LOG("VOICE_COMPILER_PATH polynomial=ICK armv7-thumb2 link=Android-NDK");
+    LOG("VOICE_COMPILER_PATH application_c=NDK-clang polynomial_leaf=ICK armv7-a32 link=Android-NDK full_icky=0");
 #else
     LOG("VOICE_COMPILER_PATH polynomial=NDK-clang");
 #endif

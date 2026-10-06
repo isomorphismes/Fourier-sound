@@ -68,4 +68,24 @@ VOICE_FRAME ... fft=gpu-radix2 ... spectrum_readback=none
 
 The CI artifact is `fourier-voice-gpu-miro-release.apk`, a stripped
 `armeabi-v7a`, no-DEX package using the same signing key and package name as
-the earlier Fourier Voice test APK, with a higher version code.
+the earlier Fourier Voice test APK, with version code 5. It shares package
+identity with the CPU release; switching variants still requires digest and
+signer verification and does not authorize uninstalling an incompatible package.
+
+## Outstanding integration gate
+
+This is the one remaining implementation PR after CPU/reference consolidation.
+Follow `docs/pr-consolidation.md`, `docs/acceptance.md` and
+`docs/android-rendering.md` for the inherited physical obligations. Microphone
+permission/acoustic/lifecycle checks, static window visual/timing checks and
+replacement installation remain unverified for these newly packaged bytes.
+PowerVR shader compile/link, independent spectrum/colour/orientation comparison,
+live motion and pacing must be accepted before this GPU PR merges.
+TAB_P10 requires separate ABI and Mali acceptance; this APK targets MIRO A1 only.
+
+Builds use the shared android-NDK packager and request A32/softfp application C.
+The exact current ICK/Bionic compilation gap is retained in
+`docs/functorial-c.md`; no full-Icky or GPU-driver result follows from a native
+library link. The CPU reference remains available through its separate activity
+and host tests, while the GPU activity uploads PCM rather than CPU-produced
+spectrum. Host tests do not execute GLSL.
