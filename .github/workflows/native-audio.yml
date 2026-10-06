@@ -23,6 +23,10 @@ jobs:
           repository: dilapidated-shed/sounds
           ref: cde1a53a099d94881145498b4b906da81eba1cc5
           path: .sounds
+      - name: Refresh host media package index
+        run: sudo apt-get update
+      - name: Install declared host media decoder
+        run: sudo apt-get install -y ffmpeg
       - name: Dense versus dyadic comparison on six real recordings
         run: make media-test
   android:
