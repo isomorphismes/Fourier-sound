@@ -3,6 +3,7 @@
 #include <android_native_app_glue.h>
 
 #include "complex_field.h"
+#include "complex_plot.h"
 #include "native_window_output.h"
 #include "wegert.h"
 
@@ -39,20 +40,10 @@ static bool make_acceptance_portrait(
     double x_radius = aspect >= 1.0 ? 1.5 * aspect : 1.5;
     double y_radius = aspect >= 1.0 ? 1.5 : 1.5 / aspect;
 
-    for (size_t row = 0U; row < height; ++row) {
-        double y = y_radius -
-            2.0 * y_radius * (double)row / (double)(height - 1U);
-        for (size_t column = 0U; column < width; ++column) {
-            double x = -x_radius +
-                2.0 * x_radius * (double)column / (double)(width - 1U);
-            struct complex_value z = {x, y};
-            struct complex_value value = fourier_polynomial_value(
-                coefficients, 4U, 4U, z);
-            if (!wegert_color_complex(value, &pixels[row * width + column]))
-                return false;
-        }
-    }
-    return true;
+    struct fourier_polynomial polynomial = {coefficients, 4U, 4U};
+    struct complex_mapping mapping = {&polynomial, fourier_polynomial_evaluate};
+    struct complex_plot_domain domain = {x_radius, y_radius, width, height};
+    return complex_plot_raster(mapping, domain, pixels, width * height);
 }
 
 static void finish(struct application *a, const char *status)

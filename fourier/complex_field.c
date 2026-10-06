@@ -1,5 +1,12 @@
 #include "complex_field.h"
 
+struct complex_value fourier_polynomial_evaluate(const void *state, struct complex_value point)
+{
+    const struct fourier_polynomial *polynomial = state;
+    return fourier_polynomial_value(polynomial->coefficients, polynomial->coefficient_count,
+                                    polynomial->term_count, point);
+}
+
 static struct complex_value multiply(struct complex_value a,
                                      struct complex_value b)
 {
