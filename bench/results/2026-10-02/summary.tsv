@@ -1,0 +1,21 @@
+cpu	kernel	variant	baseline	speedup_at_baseline_shape	headroom	error_at_baseline_shape	bytes_per_component
+cortex-a15	poly-frame	e4m3-storage-f32-math	f64-scalar/24-terms	0.983	16 terms measured under baseline budget	0.0187462363	1
+cortex-a15	poly-frame	e5m2-storage-f32-math	f64-scalar/24-terms	0.827	16 terms measured under baseline budget	0.0193560555	1
+cortex-a15	poly-frame	f32-neon4	f64-scalar/24-terms	1.209	28 terms measured under baseline budget	5.34999933e-08	4
+cortex-a15	poly-frame	f32-scalar	f64-scalar/24-terms	1.147	26 terms measured under baseline budget	5.34999933e-08	4
+cortex-a15	poly-frame	f64-scalar	f64-scalar/24-terms	1.000	24 terms measured under baseline budget	0	8
+cortex-a15	poly-frame	fp16-storage-f32-math	f64-scalar/24-terms	0.735	16 terms measured under baseline budget	0.000270932899	2
+cortex-a15	fft	f32-neon2	f64-scalar/N=1024	1.290	N=1024 measured under baseline budget	7.00400985e-07	4
+cortex-a15	fft	f32-scalar	f64-scalar/N=1024	1.094	N=1024 measured under baseline budget	7.00400985e-07	4
+cortex-a15	fft	f64-scalar	f64-scalar/N=1024	1.000	N=1024 measured under baseline budget	0	8
+cortex-a15	fft	fp16-storage-f32-math	f64-scalar/N=1024	0.569	N=512 measured under baseline budget	9.81927355e-05	2
+cortex-a7	poly-frame	e4m3-storage-f32-math	f64-scalar/24-terms	0.916	16 terms measured under baseline budget	0.0187462363	1
+cortex-a7	poly-frame	e5m2-storage-f32-math	f64-scalar/24-terms	0.777	16 terms measured under baseline budget	0.0193560555	1
+cortex-a7	poly-frame	f32-neon4	f64-scalar/24-terms	1.134	26 terms measured under baseline budget	5.34999933e-08	4
+cortex-a7	poly-frame	f32-scalar	f64-scalar/24-terms	1.124	26 terms measured under baseline budget	5.34999933e-08	4
+cortex-a7	poly-frame	f64-scalar	f64-scalar/24-terms	1.000	24 terms measured under baseline budget	0	8
+cortex-a7	poly-frame	fp16-storage-f32-math	f64-scalar/24-terms	0.713	16 terms measured under baseline budget	0.000270932899	2
+cortex-a7	fft	f32-neon2	f64-scalar/N=1024	1.286	N=1024 measured under baseline budget	7.00400985e-07	4
+cortex-a7	fft	f32-scalar	f64-scalar/N=1024	1.086	N=1024 measured under baseline budget	7.00400985e-07	4
+cortex-a7	fft	f64-scalar	f64-scalar/N=1024	1.000	N=1024 measured under baseline budget	0	8
+cortex-a7	fft	fp16-storage-f32-math	f64-scalar/N=1024	0.560	N=512 measured under baseline budget	9.81927355e-05	2

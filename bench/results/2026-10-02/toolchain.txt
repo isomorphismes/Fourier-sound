@@ -1,0 +1,87 @@
+Compiler:
+arm-linux-gnueabi-gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0
+
+QEMU:
+qemu-arm version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)
+
+NEON/FP evidence from disassembly:
+   104f6:	eeb7 fbcf 	vcvt.f32.f64	s30, d15
+   1055e:	eef7 7bca 	vcvt.f32.f64	s15, d10
+   10562:	eef7 5be0 	vcvt.f32.f64	s11, d16
+   1056e:	eeb3 6a67 	vcvtb.f16.f32	s12, s15
+   10576:	eef3 6a65 	vcvtb.f16.f32	s13, s11
+   105f2:	ee37 7a67 	vsub.f32	s14, s14, s15
+   105f6:	ee47 7a06 	vmla.f32	s15, s14, s12
+   10634:	eef8 7a67 	vcvt.f32.u32	s15, s15
+   10638:	ee67 7aa9 	vmul.f32	s15, s15, s19
+   10646:	eeb8 7a47 	vcvt.f32.u32	s14, s14
+   1064a:	ee27 7a29 	vmul.f32	s14, s14, s19
+   106e0:	ee37 7a67 	vsub.f32	s14, s14, s15
+   106e4:	ee47 7a06 	vmla.f32	s15, s14, s12
+   10722:	eef8 7a67 	vcvt.f32.u32	s15, s15
+   10726:	ee67 7aa9 	vmul.f32	s15, s15, s19
+   10734:	eeb8 7a47 	vcvt.f32.u32	s14, s14
+   10738:	ee27 7a29 	vmul.f32	s14, s14, s19
+   1080a:	ee77 7ac7 	vsub.f32	s15, s15, s14
+   1080e:	ee07 7a86 	vmla.f32	s14, s15, s12
+   10852:	eeb8 7a67 	vcvt.f32.u32	s14, s15
+   10856:	ee27 7a09 	vmul.f32	s14, s14, s18
+   10866:	eef8 7a67 	vcvt.f32.u32	s15, s15
+   1086a:	ee67 7a89 	vmul.f32	s15, s15, s18
+   108cc:	ee77 7ac7 	vsub.f32	s15, s15, s14
+   108d0:	ee07 7a86 	vmla.f32	s14, s15, s12
+   1090c:	eeb8 7a67 	vcvt.f32.u32	s14, s15
+   10910:	ee27 7a09 	vmul.f32	s14, s14, s18
+   1091a:	eef8 7a67 	vcvt.f32.u32	s15, s15
+   1091e:	ee67 7a89 	vmul.f32	s15, s15, s18
+   10a40:	eef8 7ae7 	vcvt.f32.s32	s15, s15
+   10a44:	ee67 7a84 	vmul.f32	s15, s15, s8
+   10a4c:	ee76 6a66 	vsub.f32	s13, s12, s13
+   10a5c:	eeb8 7ae7 	vcvt.f32.s32	s14, s15
+   10a60:	ee27 7a06 	vmul.f32	s14, s14, s12
+   10a68:	ee77 7ae5 	vsub.f32	s15, s15, s11
+   10ac8:	eef8 7ae7 	vcvt.f32.s32	s15, s15
+   10acc:	ee67 7a87 	vmul.f32	s15, s15, s14
+   10f0c:	eef7 0ae7 	vcvt.f64.f32	d16, s15
+   10f14:	eef7 1ac7 	vcvt.f64.f32	d17, s14
+   10f7c:	eef7 1ac7 	vcvt.f64.f32	d17, s14
+   10f84:	eef7 0ae7 	vcvt.f64.f32	d16, s15
+   1100c:	eeb2 7a47 	vcvtb.f32.f16	s14, s14
+   11014:	eef2 7a67 	vcvtb.f32.f16	s15, s15
+   11018:	eef7 1ac7 	vcvt.f64.f32	d17, s14
+   11020:	eef7 0ae7 	vcvt.f64.f32	d16, s15
+   11236:	eef7 3ae7 	vcvt.f64.f32	d19, s15
+   1123a:	eeb7 7ac7 	vcvt.f64.f32	d7, s14
+   112ea:	ee25 7aa7 	vmul.f32	s14, s11, s15
+   112ee:	ee66 7a27 	vmul.f32	s15, s12, s15
+   112f2:	ee45 7aa6 	vmla.f32	s15, s11, s13
+   11306:	ee77 7aa4 	vadd.f32	s15, s15, s9
+   1130a:	ee77 6a05 	vadd.f32	s13, s14, s10
+   11310:	eef7 0ae7 	vcvt.f64.f32	d16, s15
+   11314:	eef7 1ae6 	vcvt.f64.f32	d17, s13
+   11382:	eeb2 4a44 	vcvtb.f32.f16	s8, s8
+   1138a:	eef2 3a63 	vcvtb.f32.f16	s7, s7
+   113aa:	ee24 7aa7 	vmul.f32	s14, s9, s15
+   113ae:	ee65 7a27 	vmul.f32	s15, s10, s15
+   113b2:	ee44 7aa5 	vmla.f32	s15, s9, s11
+   113c8:	eef2 6a66 	vcvtb.f32.f16	s13, s13
+   113cc:	eeb2 6a46 	vcvtb.f32.f16	s12, s12
+   113d0:	ee76 5a87 	vadd.f32	s11, s13, s14
+   113d4:	ee76 7a27 	vadd.f32	s15, s12, s15
+   113da:	eef7 0ae7 	vcvt.f64.f32	d16, s15
+   113de:	eef7 1ae5 	vcvt.f64.f32	d17, s11
+   1142a:	eef7 0ae7 	vcvt.f64.f32	d16, s15
+   114ae:	eef3 7a67 	vcvtb.f16.f32	s15, s15
+   11504:	ee65 2a83 	vmul.f32	s5, s11, s6
+   11508:	ee26 4a03 	vmul.f32	s8, s12, s6
+   11518:	eef2 6a66 	vcvtb.f32.f16	s13, s13
+   1151c:	ee05 4aa3 	vmla.f32	s8, s11, s7
+   11528:	eef2 4a64 	vcvtb.f32.f16	s9, s9
+   1152c:	eeb2 7a47 	vcvtb.f32.f16	s14, s14
+   11534:	eef2 7a67 	vcvtb.f32.f16	s15, s15
+   11538:	ee27 5aa5 	vmul.f32	s10, s15, s11
+   1153c:	ee67 7a86 	vmul.f32	s15, s15, s12
+   11540:	ee44 7aa5 	vmla.f32	s15, s9, s11
+   11550:	ee77 4a27 	vadd.f32	s9, s14, s15
+   11554:	ee37 7a67 	vsub.f32	s14, s14, s15
+   11558:	ee76 7a85 	vadd.f32	s15, s13, s10

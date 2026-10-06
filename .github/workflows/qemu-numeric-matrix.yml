@@ -1,0 +1,116 @@
+name: ARMv7 QEMU numeric matrix
+
+on:
+  push:
+    branches:
+      - 'bench/qemu-armv7-numerics'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out Fourier-sound benchmark
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Check out pinned ICK low-precision definitions
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: dilapidated-shed/ick
+          ref: 2176498723bf01792236cef3bebf349822cae496
+          path: .ick
+          persist-credentials: false
+
+      - name: Install ARMv7 cross compiler and QEMU user emulator
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi \
+            libc6-dev-armel-cross qemu-user python3
+
+      - name: Build Thumb-2 benchmark
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p build/qemu-numeric
+          arm-linux-gnueabi-gcc \
+            -std=c11 -O3 -static -fno-tree-vectorize \
+            -march=armv7-a -mthumb \
+            -mfpu=neon-vfpv4 -mfloat-abi=softfp -mfp16-format=ieee \
+            -Wall -Wextra -Werror -Wpedantic \
+            -I.ick/ick/include \
+            bench/qemu_numeric_matrix.c -lm \
+            -o build/qemu-numeric/numeric-matrix-armv7
+          arm-linux-gnueabi-readelf -h \
+            build/qemu-numeric/numeric-matrix-armv7 \
+            | tee build/qemu-numeric/elf.txt
+          arm-linux-gnueabi-readelf -A \
+            build/qemu-numeric/numeric-matrix-armv7 \
+            | tee build/qemu-numeric/attributes.txt
+          arm-linux-gnueabi-objdump -d \
+            build/qemu-numeric/numeric-matrix-armv7 \
+            > build/qemu-numeric/disassembly.txt
+          grep -q 'Machine:.*ARM' build/qemu-numeric/elf.txt
+          grep -q 'Tag_CPU_arch: v7' build/qemu-numeric/attributes.txt
+          grep -q 'Tag_THUMB_ISA_use: Thumb-2' build/qemu-numeric/attributes.txt
+          {
+            echo 'Compiler:'
+            arm-linux-gnueabi-gcc --version | head -1
+            echo
+            echo 'QEMU:'
+            qemu-arm --version | head -1
+            echo
+            echo 'NEON/FP evidence from disassembly:'
+            grep -E '\bv(add|sub|mul|mla|mls|cvt).*\.f(16|32)|\bq[0-9]+\b' \
+              build/qemu-numeric/disassembly.txt | head -80 || true
+          } > build/qemu-numeric/toolchain.txt
+
+      - name: Run emulator matrix
+        shell: bash
+        run: |
+          set -euxo pipefail
+          qemu-arm -cpu cortex-a7 \
+            build/qemu-numeric/numeric-matrix-armv7 cortex-a7 \
+            > build/qemu-numeric/cortex-a7.tsv
+          qemu-arm -cpu cortex-a15 \
+            build/qemu-numeric/numeric-matrix-armv7 cortex-a15 \
+            > build/qemu-numeric/cortex-a15.tsv
+          python3 bench/summarize_qemu_matrix.py \
+            build/qemu-numeric/cortex-a7.tsv \
+            build/qemu-numeric/cortex-a15.tsv \
+            > build/qemu-numeric/summary.tsv
+          cat build/qemu-numeric/summary.tsv
+
+      - name: Record interpretation boundary
+        shell: bash
+        run: |
+          cat > build/qemu-numeric/README.txt <<'EOF'
+          QEMU TCG wall time is an emulator-throughput measurement, not a
+          cycle-accurate prediction of the MIRO A1. Use ratios as a screening
+          tool. Confirm selected lanes on the physical phone before changing
+          production precision or SIMD policy.
+
+          Polynomial headroom is measured against the current-shape f64,
+          24-term, 96x192 frame budget. FFT headroom is measured against the
+          f64 N=1024 transform budget.
+
+          FP16 lane: IEEE half storage, widened to binary32 arithmetic.
+          E4M3/E5M2 lanes: ICK signed fp8 coefficient storage, binary32 math.
+          E5M3 lane: current ICK E5M3 is unsigned Ootomo-Naruse storage, so it
+          cannot represent signed complex FFT/polynomial components directly.
+          The matrix measures its decode stream only and makes no full-complex
+          throughput claim for it.
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: armv7-qemu-numeric-matrix-${{ github.sha }}
+          path: build/qemu-numeric
+          if-no-files-found: error
