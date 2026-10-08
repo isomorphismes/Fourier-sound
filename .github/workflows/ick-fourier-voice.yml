@@ -4,13 +4,20 @@ on:
   push:
     branches:
       - 'ick/fourier-voice-miro-a1'
+  pull_request:
+    paths:
+      - 'fourier/ick_polynomial_leaf.c'
+      - 'tests/ick_polynomial_leaf_test.c'
+      - 'tests/reference/ick_polynomial_leaf.c'
+      - 'Makefile'
+      - '.github/workflows/ick-fourier-voice.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  ICK_COMMIT: 79eccb8ff232e05bdbb9e345fc224f251636b43f
+  ICK_COMMIT: c5d28dde9cc333a562b907785d0370b725146cdf
   ANDROID_NDK_VERSION: 27.2.12479018
   ANDROID_SOURCE_COMMIT: ${{ github.sha }}
 
@@ -22,6 +29,7 @@ jobs:
       - name: Check out Fourier Voice
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Check out pinned ICK source and GCC reference
@@ -107,8 +115,10 @@ jobs:
           arm-linux-gnueabi-nm -u build/ick/armeabi-v7a/fourier_voice_leaf.o \
             | tee build/ick/armeabi-v7a/ick-leaf.undefined
 
-      - name: Run host reference tests
-        run: make test
+      - uses: isomorphisms/ai-ci/ick-host@f538ed81669ceb2d521b65fc3b3af7c2e51dd2f2
+        id: host-ick
+      - name: Run host reference tests with the literal-glyph frontend
+        run: make test ICK="${{ steps.host-ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.host-ick.outputs.link_flags }}"
 
       - name: Shared NativeActivity packager
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

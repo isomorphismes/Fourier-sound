@@ -1,7 +1,9 @@
 # Recipes are direct build-tool invocations using make's fixed shell interface.
 # No app Java/Kotlin, Gradle, or maintained shell program.
 BUILD ?= build
-CC ?= cc
+ICK ?= ick
+ICK_LINK_FLAGS ?= -fno-link-libatomic
+CC = $(ICK) $(ICK_LINK_FLAGS)
 CFLAGS ?= -O2 -g
 WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Irender/android -Iacceptance
@@ -102,9 +104,13 @@ $(BUILD)/voice-signal-test: tests/voice_signal_test.c fourier/fft.c $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/voice_signal_test.c fourier/fft.c -lm -o $@
 
-$(BUILD)/ick-polynomial-leaf-test: tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c fourier/complex_field.c $(HEADERS)
+$(BUILD)/ick-polynomial-reference.o: tests/reference/ick_polynomial_leaf.c
 	mkdir -p $(@D)
-	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c fourier/complex_field.c -lm -o $@
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -Dfourier_polynomial_cartesian_ick=reference_polynomial_cartesian_ick -c $< -o $@
+
+$(BUILD)/ick-polynomial-leaf-test: tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c $(BUILD)/ick-polynomial-reference.o $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c $(BUILD)/ick-polynomial-reference.o -lm -o $@
 
 $(BUILD)/rgb24-rgba8888-test: tests/rgb24_rgba8888_test.c render/rgb24_rgba8888.c $(HEADERS)
 	mkdir -p $(@D)

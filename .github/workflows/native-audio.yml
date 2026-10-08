@@ -13,10 +13,28 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: isomorphisms/ai-ci/ick-host@f538ed81669ceb2d521b65fc3b3af7c2e51dd2f2
+        id: ick
       - name: Deterministic host and simulated backend tests
-        run: make test
+        run: make test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}"
       - name: Address and undefined behavior sanitizers
-        run: make test BUILD=build-sanitized CFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+        run: make test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}" BUILD=build-sanitized CFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+      - name: Check out pinned source and toolchain contracts
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/ai-ci
+          ref: f538ed81669ceb2d521b65fc3b3af7c2e51dd2f2
+          path: .aici
+          sparse-checkout: |
+            c-source
+            src/aici.c
+            contracts/build-toolchain-v0.contract.tsv
+          persist-credentials: false
+      - name: Enforce source assignments and declared stages
+        run: |
+          make -f .aici/c-source/Makefile check ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}" FILES="fourier/ick_polynomial_leaf.c tests/ick_polynomial_leaf_test.c"
+          "${{ steps.ick.outputs.compiler }}" ${{ steps.ick.outputs.link_flags }} -std=c17 -O2 -Wall -Wextra -Werror .aici/src/aici.c -o "$RUNNER_TEMP/aici-icky"
+          "$RUNNER_TEMP/aici-icky" verify .aici/contracts/build-toolchain-v0.contract.tsv .
       - name: Exact real-audio corpus
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -28,7 +46,7 @@ jobs:
       - name: Install declared host media decoder
         run: sudo apt-get install -y ffmpeg
       - name: Dense versus dyadic comparison on six real recordings
-        run: make media-test
+        run: make media-test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}"
   android:
     runs-on: ubuntu-24.04
     env:

@@ -33,3 +33,36 @@ The shared ICK application compiler step stops on failure. The explicit NDK
 build is a separately selected diagnostic lane. No automatic fallback, new
 APK, microphone/speaker runtime, replacement install or physical acceptance is
 claimed. GPU and numeric-screening branches were not replaced by this repair.
+
+## 2026-10-08 Icky Horner source pass
+
+The production header-free polynomial leaf now composes
+`coefficient_at → cartesian_product → with_added_coefficient →
+horner_polynomial_value`. Its scalar/array Cartesian ABI is preserved.
+Owned assignments use literal `←`; mathematical multiplication uses `×`;
+pointer spelling remains `*`.
+
+The native suite is compiled and linked by ICK pinned at
+`c5d28dde9cc333a562b907785d0370b725146cdf`, through the declared native scalar producer.
+All 13 executed host tests pass, including the independent DFT/FFT comparison,
+Parseval/conjugacy, simulated audio/window boundaries and Wegert rendering.
+The new Horner test checks an independently expanded polynomial and 882
+comparisons against the frozen previous leaf: count clamping, empty inputs,
+signed zeros, nonfinite inputs and output/input aliasing are included.
+
+ICK-instrumented AddressSanitizer and UndefinedBehaviorSanitizer tests pass
+locally with leak detection disabled only for that local run: this container
+cannot inspect the process tasks needed by LeakSanitizer. The required CI
+sanitizer command retains its default leak detection. The producer declares
+and hashes its prebuilt Ubuntu glibc/GCC 13 startup and sanitizer dependencies;
+no host compiler compiles consumer source. Automatic libatomic linkage and the
+full native ICK runtime remain outside that native scalar profile.
+
+The ARMv7 leaf producer pins the same compiler and is triggered by leaf/producer
+PR changes. Its existing A32/softfp object checks and NDK application/link
+boundary remain explicit. New target receipts are pending CI; native results
+do not imply Android or physical-device execution.
+
+This pass refactors the owned Horner leaf and its maintained test. Other
+application C, headers, generators and experimental producers remain pending
+source/profile review; `full_icky=0` remains the application claim.

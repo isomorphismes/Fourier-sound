@@ -65,7 +65,7 @@ PCM buffer and a native acceptance APK. Captured PCM also passes through
 `fourier/pcm_block`, an Android-free conversion boundary for mathematical code.
 It introduces no decomposition algorithm or visualization.
 
-Run `make test` for host checks. See [audio implementation](docs/audio-input.md)
+Run `make test ICK=/path/to/ick` for the required ICK host checks. See [audio implementation](docs/audio-input.md)
 for the accelerometer comparison and [acceptance](docs/acceptance.md) for APK
 builds and the MIRO A1 procedure.
 
