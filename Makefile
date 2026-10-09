@@ -1,7 +1,9 @@
 # Recipes are direct build-tool invocations using make's fixed shell interface.
 # No app Java/Kotlin, Gradle, or maintained shell program.
 BUILD ?= build
-CC ?= cc
+ICK ?= ick
+ICK_LINK_FLAGS ?= -fno-link-libatomic
+CC = $(ICK) $(ICK_LINK_FLAGS)
 CFLAGS ?= -O2 -g
 WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Irender/android -Iacceptance
@@ -102,9 +104,13 @@ $(BUILD)/voice-signal-test: tests/voice_signal_test.c fourier/fft.c $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/voice_signal_test.c fourier/fft.c -lm -o $@
 
-$(BUILD)/ick-polynomial-leaf-test: tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c fourier/complex_field.c $(HEADERS)
+$(BUILD)/ick-polynomial-reference.o: tests/reference/ick_polynomial_leaf.c
 	mkdir -p $(@D)
-	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c fourier/complex_field.c -lm -o $@
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -Dfourier_polynomial_cartesian_ick=reference_polynomial_cartesian_ick -c $< -o $@
+
+$(BUILD)/ick-polynomial-leaf-test: tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c $(BUILD)/ick-polynomial-reference.o $(HEADERS)
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) tests/ick_polynomial_leaf_test.c fourier/ick_polynomial_leaf.c $(BUILD)/ick-polynomial-reference.o -lm -o $@
 
 $(BUILD)/rgb24-rgba8888-test: tests/rgb24_rgba8888_test.c render/rgb24_rgba8888.c $(HEADERS)
 	mkdir -p $(@D)
@@ -133,7 +139,34 @@ test: $(BUILD)/complex-plot-test $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD
 	$(BUILD)/rgb24-rgba8888-test
 	$(BUILD)/native-window-output-test
 
+# Owned C is parsed by ICK. The NDK supplies Bionic headers, assembly, linking,
+# platform libraries, and unchanged upstream native_app_glue.
+ICK_ARMV7 ?= ick-armv7
+ICK_ARM64 ?= ick-aarch64
+ICK_X86_64 ?= ick-x86_64
+ICK_ARMV7_BUILTIN_HEADERS = $(shell $(ICK_ARMV7) -print-file-name=include)
+ICK_ARM64_BUILTIN_HEADERS = $(shell $(ICK_ARM64) -print-file-name=include)
+ICK_X86_64_BUILTIN_HEADERS = $(shell $(ICK_X86_64) -print-file-name=include)
+ICK_BIONIC_HEADERS ?=
+ICK_BIONIC_INCLUDE = $(if $(ICK_BIONIC_HEADERS),-I"$(ICK_BIONIC_HEADERS)")
+SYSROOT = $(NDK)/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+ICK_ANDROID_FLAGS = -std=c17 -O2 -g -gdwarf-4 -gno-variable-location-views $(WARN) $(INCLUDES) -isystem $(GLUE) -D__ANDROID__ -D__ANDROID_API__=26 -D__ANDROID_MIN_SDK_VERSION__=26 -DBIONIC_IOCTL_NO_SIGNEDNESS_OVERLOAD -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2
+# Retain each ICK assembly product as compiler-stage evidence.
+.SECONDARY:
+ANDROID_SHARED_FLAGS = -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384
+MICROPHONE_SOURCES = android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON)
+WINDOW_SOURCES = android/render_main.c render/android/native_window_output.c render/rgb24_rgba8888.c fourier/complex_field.c render/wegert.c render/complex_plot.c
+VOICE_SOURCES = android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c
+SPEAKER_SOURCES = android/speaker_main.c audio/android/aaudio_output.c audio/interface/speaker_input.c audio/interface/audio_result.c
+
 define android_abi
+$(BUILD)/android/$(1)/owned/%.s: %.c $(HEADERS)
+	mkdir -p $$(@D)
+	$(5) --sysroot="$(SYSROOT)" $(ICK_BIONIC_INCLUDE) -nostdinc -isystem "$$($(6))" -isystem "$(SYSROOT)/usr/include/$(4)" -isystem "$(SYSROOT)/usr/include" $(ICK_ANDROID_FLAGS) $(3) -S $$< -o $$@
+
+$(BUILD)/android/$(1)/owned/%.o: $(BUILD)/android/$(1)/owned/%.s
+	$(TOOLCHAIN)/$(2) $(3) -c $$< -o $$@
+
 $(BUILD)/android/$(1)/glue.o: $(GLUE)/android_native_app_glue.c
 	mkdir -p $$(@D)
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -DANativeActivity_onCreate=fourier_glue_on_create -I$(GLUE) -c $$< -o $$@
@@ -146,26 +179,30 @@ $(BUILD)/android/$(1)/render_glue.o: $(GLUE)/android_native_app_glue.c
 	mkdir -p $$(@D)
 	$(TOOLCHAIN)/$(2) -std=c17 -O2 -fPIC $(3) -I$(GLUE) -c $$< -o $$@
 
-$(BUILD)/android/$(1)/libfourier_render_ref.so: $(RENDER) $(HEADERS)
+$(BUILD)/android/$(1)/libfourier_render_ref.so: $(addprefix $(BUILD)/android/$(1)/owned/,$(RENDER:.c=.o))
 	mkdir -p $$(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 $(RENDER) -lm -o $$@
+	$(TOOLCHAIN)/$(2) $(3) $(ANDROID_SHARED_FLAGS) $$^ -lm -o $$@
 	$(TOOLCHAIN)/llvm-readelf -h $$@
 
-$(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so: android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(HEADERS) $(BUILD)/android/$(1)/glue.o
+$(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so: $(addprefix $(BUILD)/android/$(1)/owned/,$(MICROPHONE_SOURCES:.c=.o)) $(BUILD)/android/$(1)/glue.o
 	mkdir -p $$(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/native_main.c android/permission.c audio/android/aaudio_input.c audio/android/aaudio_output.c $(COMMON) $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $$@
+	$(TOOLCHAIN)/$(2) $(3) $(ANDROID_SHARED_FLAGS) $$^ -laaudio -landroid -llog -lm -o $$@
 
-$(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so: android/render_main.c render/android/native_window_output.c render/rgb24_rgba8888.c fourier/complex_field.c render/wegert.c render/complex_plot.c $(HEADERS) $(BUILD)/android/$(1)/render_glue.o
+$(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so: $(addprefix $(BUILD)/android/$(1)/owned/,$(WINDOW_SOURCES:.c=.o)) $(BUILD)/android/$(1)/render_glue.o
 	mkdir -p $$(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/render_main.c render/android/native_window_output.c render/rgb24_rgba8888.c fourier/complex_field.c render/wegert.c render/complex_plot.c $(BUILD)/android/$(1)/render_glue.o -landroid -llog -lm -o $$@
+	$(TOOLCHAIN)/$(2) $(3) $(ANDROID_SHARED_FLAGS) $$^ -landroid -llog -lm -o $$@
 
-$(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so: android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c $(HEADERS) $(BUILD)/android/$(1)/glue.o
+$(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so: $(addprefix $(BUILD)/android/$(1)/owned/,$(VOICE_SOURCES:.c=.o)) $(BUILD)/android/$(1)/glue.o
 	mkdir -p $$(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c $(BUILD)/android/$(1)/glue.o -laaudio -landroid -llog -lm -o $$@
+	$(TOOLCHAIN)/$(2) $(3) $(ANDROID_SHARED_FLAGS) $$^ -laaudio -landroid -llog -lm -o $$@
 
-$(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so: android/speaker_main.c audio/android/aaudio_output.c audio/interface/speaker_input.c audio/interface/audio_result.c $(HEADERS) $(BUILD)/android/$(1)/speaker_glue.o
+$(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so: $(addprefix $(BUILD)/android/$(1)/owned/,$(SPEAKER_SOURCES:.c=.o)) $(BUILD)/android/$(1)/speaker_glue.o
 	mkdir -p $$(@D)
-	$(TOOLCHAIN)/$(2) -std=c17 -O2 -g $(WARN) $(3) $(INCLUDES) -isystem $(GLUE) -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/speaker_main.c audio/android/aaudio_output.c audio/interface/speaker_input.c audio/interface/audio_result.c $(BUILD)/android/$(1)/speaker_glue.o -laaudio -landroid -llog -lm -o $$@
+	$(TOOLCHAIN)/$(2) $(3) $(ANDROID_SHARED_FLAGS) $$^ -laaudio -landroid -llog -lm -o $$@
+
+.PHONY: android-$(1) android-libraries-$(1)
+android-libraries-$(1): $(BUILD)/android/$(1)/libfourier_render_ref.so $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so
+android-$(1): $(BUILD)/fourier-microphone-$(1).apk $(BUILD)/fourier-speaker-$(1).apk $(BUILD)/fourier-render-window-$(1).apk $(BUILD)/fourier-voice-$(1).apk $(BUILD)/android/$(1)/libfourier_render_ref.so
 
 $(BUILD)/fourier-microphone-$(1).apk: $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so android/AndroidManifest.xml
 	$(call package_native,org.isomorphismes.fouriersound,$(VERSION_CODE),0.1.0,android/AndroidManifest.xml,$(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so,$(1),$(BUILD)/fourier-microphone-$(1).apk)
@@ -181,9 +218,9 @@ $(BUILD)/fourier-speaker-$(1).apk: $(BUILD)/android/$(1)/speaker-staging/lib/$(1
 
 endef
 
-$(eval $(call android_abi,armeabi-v7a,armv7a-linux-androideabi26-clang,-marm -march=armv7-a))
-$(eval $(call android_abi,arm64-v8a,aarch64-linux-android26-clang,))
-$(eval $(call android_abi,x86_64,x86_64-linux-android26-clang,))
+$(eval $(call android_abi,armeabi-v7a,armv7a-linux-androideabi26-clang,-marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp,arm-linux-androideabi,$(ICK_ARMV7),ICK_ARMV7_BUILTIN_HEADERS))
+$(eval $(call android_abi,arm64-v8a,aarch64-linux-android26-clang,-march=armv8-a -ffixed-x18,aarch64-linux-android,$(ICK_ARM64),ICK_ARM64_BUILTIN_HEADERS))
+$(eval $(call android_abi,x86_64,x86_64-linux-android26-clang,-march=x86-64,x86_64-linux-android,$(ICK_X86_64),ICK_X86_64_BUILTIN_HEADERS))
 
 android: \
 	$(BUILD)/fourier-microphone-armeabi-v7a.apk \
@@ -204,10 +241,31 @@ android: \
 
 
 ICK_ARMV7_OBJECT ?= $(BUILD)/ick/armeabi-v7a/fourier_voice_leaf.o
+# This object is produced and inspected by the explicit ICK/NDK leaf stage.
+# An adjacent assembly file must not trigger make's host-assembler implicit rule.
+$(ICK_ARMV7_OBJECT):
+	test -f "$@"
 
-$(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so: android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c $(HEADERS) $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT)
+ARMV7_TARGET_FLAGS = -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp
+VOICE_COMMON_OBJECTS = $(addprefix $(BUILD)/android/armeabi-v7a/owned/,$(filter-out android/voice_main.o,$(VOICE_SOURCES:.c=.o)))
+
+$(BUILD)/android/armeabi-v7a/voice-verify.s: android/voice_main.c $(HEADERS)
 	mkdir -p $(@D)
-	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang -std=c17 -O2 -g $(WARN) -marm -march=armv7-a $(INCLUDES) -isystem $(GLUE) -DFOURIER_USE_ICK_POLYNOMIAL -DFOURIER_ICK_VERIFY -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT) -laaudio -landroid -llog -lm -o $@
+	$(ICK_ARMV7) --sysroot="$(SYSROOT)" $(ICK_BIONIC_INCLUDE) -nostdinc -isystem "$(ICK_ARMV7_BUILTIN_HEADERS)" -isystem "$(SYSROOT)/usr/include/arm-linux-androideabi" -isystem "$(SYSROOT)/usr/include" $(ICK_ANDROID_FLAGS) $(ARMV7_TARGET_FLAGS) -DFOURIER_USE_ICK_POLYNOMIAL -DFOURIER_ICK_VERIFY -S $< -o $@
+
+$(BUILD)/android/armeabi-v7a/voice-verify.o: $(BUILD)/android/armeabi-v7a/voice-verify.s
+	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang $(ARMV7_TARGET_FLAGS) -c $< -o $@
+
+$(BUILD)/android/armeabi-v7a/voice-leaf-release.s: android/voice_main.c $(HEADERS)
+	mkdir -p $(@D)
+	$(ICK_ARMV7) --sysroot="$(SYSROOT)" $(ICK_BIONIC_INCLUDE) -nostdinc -isystem "$(ICK_ARMV7_BUILTIN_HEADERS)" -isystem "$(SYSROOT)/usr/include/arm-linux-androideabi" -isystem "$(SYSROOT)/usr/include" $(ICK_ANDROID_FLAGS) $(ARMV7_TARGET_FLAGS) -DFOURIER_USE_ICK_POLYNOMIAL -S $< -o $@
+
+$(BUILD)/android/armeabi-v7a/voice-leaf-release.o: $(BUILD)/android/armeabi-v7a/voice-leaf-release.s
+	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang $(ARMV7_TARGET_FLAGS) -c $< -o $@
+
+$(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-verify.o $(VOICE_COMMON_OBJECTS) $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT)
+	mkdir -p $(@D)
+	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang $(ARMV7_TARGET_FLAGS) $(ANDROID_SHARED_FLAGS) $^ -laaudio -landroid -llog -lm -o $@
 
 $(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk: $(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
 	$(call package_native,org.isomorphismes.fouriersound.voice,3,0.3.0-ick,android/VoiceManifest.xml,$(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so,armeabi-v7a,$(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk)
@@ -215,8 +273,10 @@ $(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk: $(BUILD)/android/armeabi-v7a/vo
 android-ick-leaf-armv7: $(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk
 
 
-# Shipping-sized MIRO A1 packages.  Keep debug information as separate build
-# artifacts, strip only the copy that is placed in the APK.
+# Shipping-sized MIRO A1 packages. Keep debug information as separate build
+# artifacts, strip only the copy placed in the APK. The historical ndk/ick
+# directory names identify the baseline/leaf variants; both now compile owned
+# application C through ICK and retain the NDK platform link.
 $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-staging/lib/armeabi-v7a/libfourier_voice.so
 	mkdir -p $(@D) $(BUILD)/symbols/ndk
 	$(TOOLCHAIN)/llvm-objcopy --only-keep-debug $< $(BUILD)/symbols/ndk/libfourier_voice.so.debug
@@ -228,9 +288,9 @@ $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armea
 $(BUILD)/fourier-voice-miro-release.apk: $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
 	$(call package_native,org.isomorphismes.fouriersound.voice,5,0.5.0,android/VoiceManifest.xml,$(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so,armeabi-v7a,$(BUILD)/fourier-voice-miro-release.apk)
 
-$(BUILD)/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so: android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c $(HEADERS) $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT)
+$(BUILD)/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-leaf-release.o $(VOICE_COMMON_OBJECTS) $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT)
 	mkdir -p $(@D)
-	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang -std=c17 -O2 -g $(WARN) -marm -march=armv7-a $(INCLUDES) -isystem $(GLUE) -DFOURIER_USE_ICK_POLYNOMIAL -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -shared -Wl,--no-undefined -Wl,-z,relro,-z,now -Wl,-z,max-page-size=16384 android/voice_main.c android/permission.c audio/android/aaudio_input.c audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c fourier/fft.c fourier/framing.c fourier/complex_field.c render/wegert.c render/complex_plot.c render/rgb24_rgba8888.c render/android/native_window_output.c $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT) -laaudio -landroid -llog -lm -o $@
+	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang $(ARMV7_TARGET_FLAGS) $(ANDROID_SHARED_FLAGS) $^ -laaudio -landroid -llog -lm -o $@
 
 $(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so
 	mkdir -p $(@D) $(BUILD)/symbols/ick

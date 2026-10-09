@@ -13,10 +13,28 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: isomorphisms/ai-ci/ick-host@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+        id: ick
       - name: Deterministic host and simulated backend tests
-        run: make test
+        run: make test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}"
       - name: Address and undefined behavior sanitizers
-        run: make test BUILD=build-sanitized CFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+        run: make test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}" BUILD=build-sanitized CFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+      - name: Check out pinned source and toolchain contracts
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/ai-ci
+          ref: 903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+          path: .aici
+          sparse-checkout: |
+            c-source
+            src/aici.c
+            contracts/build-toolchain-v0.contract.tsv
+          persist-credentials: false
+      - name: Enforce source assignments and declared stages
+        run: |
+          make -f .aici/c-source/Makefile check ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}" FILES="fourier/ick_polynomial_leaf.c tests/ick_polynomial_leaf_test.c"
+          "${{ steps.ick.outputs.compiler }}" ${{ steps.ick.outputs.link_flags }} -std=c17 -O2 -Wall -Wextra -Werror .aici/src/aici.c -o "$RUNNER_TEMP/aici-icky"
+          "$RUNNER_TEMP/aici-icky" verify .aici/contracts/build-toolchain-v0.contract.tsv .
       - name: Exact real-audio corpus
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -28,15 +46,30 @@ jobs:
       - name: Install declared host media decoder
         run: sudo apt-get install -y ffmpeg
       - name: Dense versus dyadic comparison on six real recordings
-        run: make media-test
+        run: make media-test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}"
   android:
     runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: armeabi-v7a
+            compiler_variable: ICK_ARMV7
+            artifact: fourier-audio-miro-a1-armeabi-v7a
+          - abi: arm64-v8a
+            compiler_variable: ICK_ARM64
+            artifact: fourier-audio-tab-p10-arm64-v8a
+          - abi: x86_64
+            compiler_variable: ICK_X86_64
+            artifact: fourier-audio-x86_64
     env:
       ANDROID_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Current shared NativeActivity packager
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -44,6 +77,7 @@ jobs:
           ref: 7c61ee43e75f7c2dab9288edb0e10055898b36e6
           path: .android-ndk
           sparse-checkout: apk
+          persist-credentials: false
       - name: Stable public test signer used by accelerometer
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -52,59 +86,40 @@ jobs:
           path: .test-signing
           sparse-checkout: _/build/app/wegert-debug.keystore
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-java@v5
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
         with:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018'
-      - name: Build APKs from clean checkout and inspect signatures, alignment, DEX absence and ELF identity
-        run: make android
+      - name: Qualify ICK against the existing fortified Android profile
+        uses: isomorphisms/ai-ci/ick-android@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+        id: android-ick
+        with:
+          abi: ${{ matrix.abi }}
+          ndk: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+          fortify-source: '2'
+      - name: Build owned C with ICK, link with NDK, and verify each APK
+        run: >-
+          make android-${{ matrix.abi }}
+          "${{ matrix.compiler_variable }}=${{ steps.android-ick.outputs.compiler }}"
+          ICK_BIONIC_HEADERS="${{ steps.android-ick.outputs.header_overlay }}"
       - name: Source revision
         run: git rev-parse HEAD > build/source-commit.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: fourier-audio-miro-a1-armeabi-v7a-${{ github.event.pull_request.head.sha || github.sha }}
+          name: ${{ matrix.artifact }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
-            build/fourier-microphone-armeabi-v7a.apk
-            build/fourier-microphone-armeabi-v7a.apk.sha256
-            build/fourier-speaker-armeabi-v7a.apk
-            build/fourier-speaker-armeabi-v7a.apk.sha256
-            build/fourier-render-window-armeabi-v7a.apk
-            build/fourier-render-window-armeabi-v7a.apk.sha256
-            build/fourier-voice-armeabi-v7a.apk
-            build/fourier-voice-armeabi-v7a.apk.sha256
-            build/*-armeabi-v7a.receipt.tsv
-            build/source-commit.txt
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fourier-audio-tab-p10-arm64-v8a-${{ github.event.pull_request.head.sha || github.sha }}
-          path: |
-            build/fourier-microphone-arm64-v8a.apk
-            build/fourier-microphone-arm64-v8a.apk.sha256
-            build/fourier-speaker-arm64-v8a.apk
-            build/fourier-speaker-arm64-v8a.apk.sha256
-            build/fourier-render-window-arm64-v8a.apk
-            build/fourier-render-window-arm64-v8a.apk.sha256
-            build/fourier-voice-arm64-v8a.apk
-            build/fourier-voice-arm64-v8a.apk.sha256
-            build/*-arm64-v8a.receipt.tsv
-            build/source-commit.txt
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: fourier-audio-x86_64-${{ github.event.pull_request.head.sha || github.sha }}
-          path: |
-            build/fourier-microphone-x86_64.apk
-            build/fourier-microphone-x86_64.apk.sha256
-            build/fourier-speaker-x86_64.apk
-            build/fourier-speaker-x86_64.apk.sha256
-            build/fourier-render-window-x86_64.apk
-            build/fourier-render-window-x86_64.apk.sha256
-            build/fourier-voice-x86_64.apk
-            build/fourier-voice-x86_64.apk.sha256
-            build/*-x86_64.receipt.tsv
+            build/fourier-microphone-${{ matrix.abi }}.apk
+            build/fourier-microphone-${{ matrix.abi }}.apk.sha256
+            build/fourier-speaker-${{ matrix.abi }}.apk
+            build/fourier-speaker-${{ matrix.abi }}.apk.sha256
+            build/fourier-render-window-${{ matrix.abi }}.apk
+            build/fourier-render-window-${{ matrix.abi }}.apk.sha256
+            build/fourier-voice-${{ matrix.abi }}.apk
+            build/fourier-voice-${{ matrix.abi }}.apk.sha256
+            build/*-${{ matrix.abi }}.receipt.tsv
             build/source-commit.txt
           if-no-files-found: error

@@ -42,7 +42,7 @@ static struct clip read_s16le(const char *path)
     assert(fread(bytes, 1, bytes_count, file) == bytes_count);
     assert(fclose(file) == 0);
 
-    size_t frames = bytes_count / 2U;
+    size_t frames = bytes_count ÷ 2U;
     int16_t *samples = malloc(frames * sizeof(*samples));
     assert(samples);
     for (size_t i = 0U; i < frames; ++i) {
@@ -77,8 +77,8 @@ static size_t spectrum_summary(const struct complex_value *coefficients,
 {
     double peak = 0.0;
     size_t peak_index = 0U;
-    double energy[WINDOW / 2U + 1U] = {0};
-    for (size_t k = 1U; k <= WINDOW / 2U; ++k) {
+    double energy[WINDOW ÷ 2U + 1U] = {0};
+    for (size_t k = 1U; k <= WINDOW ÷ 2U; ++k) {
         double real = coefficients[k].real;
         double imaginary = coefficients[k].imaginary;
         energy[k] = real * real + imaginary * imaginary;
@@ -87,7 +87,7 @@ static size_t spectrum_summary(const struct complex_value *coefficients,
     assert(isfinite(peak) && peak > 0.0);
     size_t occupied = 0U;
     double threshold = peak * 1e-5;
-    for (size_t k = 1U; k <= WINDOW / 2U; ++k)
+    for (size_t k = 1U; k <= WINDOW ÷ 2U; ++k)
         if (energy[k] >= threshold) ++occupied;
     *peak_bin = peak_index;
     *peak_energy = peak;
@@ -124,9 +124,9 @@ static size_t compare_constructions(const char *source_path,
     assert(dense && dyadic);
 
     for (size_t row = 0U; row < IMAGE_SIDE; ++row) {
-        double y = 0.7 - 1.4 * (double)row / (double)(IMAGE_SIDE - 1U);
+        double y = 0.7 - 1.4 * (double)row ÷ (double)(IMAGE_SIDE - 1U);
         for (size_t column = 0U; column < IMAGE_SIDE; ++column) {
-            double x = -0.7 + 1.4 * (double)column / (double)(IMAGE_SIDE - 1U);
+            double x = -0.7 + 1.4 * (double)column ÷ (double)(IMAGE_SIDE - 1U);
             size_t index = row * IMAGE_SIDE + column;
             struct complex_value q = {x, y};
 
@@ -144,8 +144,8 @@ static size_t compare_constructions(const char *source_path,
         }
     }
 
-    assert(nonconstant_pixels(dense) > IMAGE_PIXELS / 10U);
-    assert(nonconstant_pixels(dyadic) > IMAGE_PIXELS / 10U);
+    assert(nonconstant_pixels(dense) > IMAGE_PIXELS ÷ 10U);
+    assert(nonconstant_pixels(dyadic) > IMAGE_PIXELS ÷ 10U);
 
     size_t changed = 0U;
     uint64_t absolute_difference = 0U;
@@ -161,8 +161,8 @@ static size_t compare_constructions(const char *source_path,
         if (red || green || blue) ++changed;
     }
     *mean_rgb_difference =
-        (double)absolute_difference / (double)(IMAGE_PIXELS * 3U);
-    assert(changed > IMAGE_PIXELS / 5U);
+        (double)absolute_difference ÷ (double)(IMAGE_PIXELS * 3U);
+    assert(changed > IMAGE_PIXELS ÷ 5U);
     assert(*mean_rgb_difference > 1.0);
 
     *dense_path = output_path(source_path, ".dense.ppm");
@@ -179,7 +179,7 @@ static void test_fixture(const char *path)
 {
     struct clip clip = read_s16le(path);
     assert(clip.frames >= WINDOW * 4U);
-    assert(clip.frames <= SIZE_MAX / sizeof(float));
+    assert(clip.frames <= SIZE_MAX ÷ sizeof(float));
 
     float *mono = malloc(clip.frames * sizeof(*mono));
     assert(mono);
@@ -204,9 +204,9 @@ static void test_fixture(const char *path)
         if (rms > best_rms) { best_rms = rms; best_offset = offset; }
     }
 
-    double overall_rms = sqrt(total_square / (double)clip.frames);
+    double overall_rms = sqrt(total_square ÷ (double)clip.frames);
     assert(isfinite(overall_rms) && overall_rms > 0.0);
-    assert(best_rms > 0.0 && nonzero > clip.frames / 100U);
+    assert(best_rms > 0.0 && nonzero > clip.frames ÷ 100U);
 
     float loudest[WINDOW];
     float analysis[WINDOW];
@@ -231,7 +231,7 @@ static void test_fixture(const char *path)
     size_t changed = compare_constructions(
         path, coefficients, &dense_path, &dyadic_path, &mean_rgb_difference);
 
-    double peak_hz = (double)peak_bin * SAMPLE_RATE / WINDOW;
+    double peak_hz = (double)peak_bin * SAMPLE_RATE ÷ WINDOW;
     printf("PASS compare %s peak=%.1fHz bins=%zu changed=%zu/%u "
            "rgb_mae=%.3f dense=%s dyadic=%s\n",
            path, peak_hz, occupied, changed, IMAGE_PIXELS,

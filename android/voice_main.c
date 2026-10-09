@@ -64,7 +64,7 @@ static int64_t now_ms(void)
 {
     struct timespec value;
     (void)clock_gettime(CLOCK_MONOTONIC, &value);
-    return (int64_t)value.tv_sec * 1000 + value.tv_nsec / 1000000;
+    return (int64_t)value.tv_sec * 1000 + value.tv_nsec ÷ 1000000;
 }
 
 static bool near(double actual, double expected, double tolerance)
@@ -79,7 +79,7 @@ static bool coefficient_self_test(void)
     struct complex_value coefficients[SAMPLE_COUNT];
 
     for (size_t n = 0U; n < SAMPLE_COUNT; ++n) {
-        double phase = tau * (double)n / (double)SAMPLE_COUNT;
+        double phase = tau * (double)n ÷ (double)SAMPLE_COUNT;
         samples[n] = (float)(
             0.1 +
             0.5 * cos(8.0 * phase) +
@@ -153,7 +153,7 @@ static void strongest_positive_bins(
     for (size_t index = 0U; index < PEAK_COUNT; ++index)
         peaks[index] = (struct spectral_peak){0U, -1.0};
 
-    for (size_t bin = 1U; bin < SAMPLE_COUNT / 2U; ++bin) {
+    for (size_t bin = 1U; bin < SAMPLE_COUNT ÷ 2U; ++bin) {
         double magnitude = hypot(
             coefficients[bin].real, coefficients[bin].imaginary);
         for (size_t position = 0U; position < PEAK_COUNT; ++position) {
@@ -179,7 +179,7 @@ static void log_spectrum(
     for (size_t index = 0U; index < PEAK_COUNT; ++index) {
         frequency[index] =
             (double)a->properties.sample_rate *
-            (double)peaks[index].bin / (double)SAMPLE_COUNT;
+            (double)peaks[index].bin ÷ (double)SAMPLE_COUNT;
         phase[index] = atan2(
             coefficients[peaks[index].bin].imaginary,
             coefficients[peaks[index].bin].real);
@@ -302,7 +302,7 @@ static bool render_voice(struct application *a)
             " rate=%u samples=%u window_ms=%.3f terms=%u size=%ux%u "
             "field_x=%.2f field_y=%.2f field_max_radius=%.6f",
             a->frame_number, a->properties.sample_rate, SAMPLE_COUNT,
-            1000.0 * (double)SAMPLE_COUNT / (double)a->properties.sample_rate,
+            1000.0 * (double)SAMPLE_COUNT ÷ (double)a->properties.sample_rate,
             TERM_COUNT, RENDER_WIDTH, RENDER_HEIGHT,
             FIELD_X_RADIUS, FIELD_Y_RADIUS,
             hypot(FIELD_X_RADIUS, FIELD_Y_RADIUS));
@@ -349,7 +349,7 @@ static void start_if_ready(struct application *a)
         a->properties.sample_rate, a->properties.channels,
         a->properties.format == AUDIO_FLOAT32 ? "float32" : "signed16",
         SAMPLE_COUNT,
-        1000.0 * (double)SAMPLE_COUNT / (double)a->properties.sample_rate,
+        1000.0 * (double)SAMPLE_COUNT ÷ (double)a->properties.sample_rate,
         RENDER_WIDTH, RENDER_HEIGHT, FRAME_INTERVAL_MS, TERM_COUNT,
         hypot(FIELD_X_RADIUS, FIELD_Y_RADIUS));
 }
@@ -407,8 +407,14 @@ static void consume(struct application *a)
             close_input(a);
             return;
         }
-        if (!received) break;
-        if (!fourier_pcm_mono(a->properties, raw, received,
+        const size_t frame_count ← received;
+        if (frame_count > READ_FRAMES) {
+            LOG("VOICE_INPUT_CAPACITY frames=%zu capacity=%u", frame_count, READ_FRAMES);
+            close_input(a);
+            return;
+        }
+        if (!frame_count) break;
+        if (!fourier_pcm_mono(a->properties, raw, frame_count,
                               mono, READ_FRAMES)) {
             LOG("VOICE_PCM_ERROR");
             close_input(a);
@@ -422,7 +428,7 @@ static void consume(struct application *a)
             a->recent_count = 0U;
         }
 
-        remember_samples(a, mono, received);
+        remember_samples(a, mono, frame_count);
         int64_t now = now_ms();
         if (a->recent_count == SAMPLE_COUNT &&
             now - a->last_render_ms >= FRAME_INTERVAL_MS) {
@@ -447,9 +453,9 @@ void android_main(struct android_app *app)
 #ifdef FOURIER_ICK_VERIFY
     (void)ick_polynomial_self_test();
 #endif
-    LOG("VOICE_COMPILER_PATH application_c=NDK-clang polynomial_leaf=ICK armv7-a32 link=Android-NDK full_icky=0");
+    LOG("VOICE_COMPILER_PATH application_c=ICK polynomial_leaf=ICK armv7-a32 platform_link=Android-NDK");
 #else
-    LOG("VOICE_COMPILER_PATH polynomial=NDK-clang");
+    LOG("VOICE_COMPILER_PATH application_c=ICK polynomial=ICK platform_link=Android-NDK");
 #endif
 
     while (!app->destroyRequested) {

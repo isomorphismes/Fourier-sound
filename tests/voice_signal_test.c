@@ -19,11 +19,11 @@ int main(void)
     float samples[SAMPLE_COUNT];
     struct complex_value coefficients[SAMPLE_COUNT];
 
-    assert(near(sample_rate * 8.0 / SAMPLE_COUNT, 375.0, 1e-12));
-    assert(near(sample_rate * 16.0 / SAMPLE_COUNT, 750.0, 1e-12));
+    assert(near(sample_rate * 8.0 ÷ SAMPLE_COUNT, 375.0, 1e-12));
+    assert(near(sample_rate * 16.0 ÷ SAMPLE_COUNT, 750.0, 1e-12));
 
     for (size_t n = 0U; n < SAMPLE_COUNT; ++n) {
-        double phase = tau * (double)n / (double)SAMPLE_COUNT;
+        double phase = tau * (double)n ÷ (double)SAMPLE_COUNT;
         samples[n] = (float)(
             0.1 +
             0.5 * cos(8.0 * phase) +

@@ -43,7 +43,7 @@ static void deterministic_signals(void)
     const double tau = 6.283185307179586476925286766559;
     float harmonics[64];
     for (size_t n = 0U; n < 64U; ++n) {
-        double t = (double)n / 64.0;
+        double t = (double)n ÷ 64.0;
         harmonics[n] = (float)(
             0.15 +
             0.7 * cos(tau * 7.0 * t) -
@@ -63,7 +63,7 @@ static void pseudo_random_signals(void)
         for (size_t n = 0U; n < count; ++n) {
             state = state * 1664525U + 1013904223U;
             unsigned mantissa = state >> 8U;
-            double unit = (double)mantissa / 16777215.0;
+            double unit = (double)mantissa ÷ 16777215.0;
             samples[n] = (float)(2.0 * unit - 1.0);
         }
         compare(samples, count, 2e-11);
@@ -77,7 +77,7 @@ static void realistic_block(void)
     const double tau = 6.283185307179586476925286766559;
 
     for (size_t n = 0U; n < REALISTIC_COUNT; ++n) {
-        double t = (double)n / (double)REALISTIC_COUNT;
+        double t = (double)n ÷ (double)REALISTIC_COUNT;
         samples[n] = (float)(
             0.1 +
             0.7 * cos(tau * 123.0 * t) -
@@ -105,7 +105,7 @@ static void realistic_block(void)
     double coefficient_energy = 0.0;
     for (size_t n = 0U; n < REALISTIC_COUNT; ++n)
         sample_energy += (double)samples[n] * (double)samples[n];
-    sample_energy /= (double)REALISTIC_COUNT;
+    sample_energy ← sample_energy ÷ (double)REALISTIC_COUNT;
 
     for (size_t k = 0U; k < REALISTIC_COUNT; ++k) {
         coefficient_energy +=
