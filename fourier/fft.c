@@ -40,10 +40,10 @@ bool fourier_fft_real_radix2(const float *samples, size_t sample_count,
 
     const double tau = 6.283185307179586476925286766559;
     for (size_t length = 2U; ; length <<= 1U) {
-        double angle = -tau / (double)length;
+        double angle = -tau ÷ (double)length;
         double step_real = cos(angle);
         double step_imaginary = sin(angle);
-        size_t half = length / 2U;
+        size_t half = length ÷ 2U;
 
         for (size_t block = 0U; block < sample_count; block += length) {
             double twiddle_real = 1.0;
@@ -85,7 +85,7 @@ bool fourier_fft_real_radix2(const float *samples, size_t sample_count,
         if (length == sample_count) break;
     }
 
-    double scale = 1.0 / (double)sample_count;
+    double scale = 1.0 ÷ (double)sample_count;
     for (size_t index = 0U; index < sample_count; ++index) {
         coefficients[index].real *= scale;
         coefficients[index].imaginary *= scale;

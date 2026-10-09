@@ -26,7 +26,7 @@ static int64_t now_ms(void)
 {
     struct timespec value;
     (void)clock_gettime(CLOCK_MONOTONIC, &value);
-    return (int64_t)value.tv_sec * 1000 + value.tv_nsec / 1000000;
+    return (int64_t)value.tv_sec * 1000 + value.tv_nsec ÷ 1000000;
 }
 
 static bool make_acceptance_portrait(
@@ -36,9 +36,9 @@ static bool make_acceptance_portrait(
         {-1.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}
     };
 
-    double aspect = (double)width / (double)height;
+    double aspect = (double)width ÷ (double)height;
     double x_radius = aspect >= 1.0 ? 1.5 * aspect : 1.5;
-    double y_radius = aspect >= 1.0 ? 1.5 : 1.5 / aspect;
+    double y_radius = aspect >= 1.0 ? 1.5 : 1.5 ÷ aspect;
 
     struct fourier_polynomial polynomial = {coefficients, 4U, 4U};
     struct complex_mapping mapping = {&polynomial, fourier_polynomial_evaluate};
@@ -66,12 +66,12 @@ static void present(struct application *a)
         return;
     }
 
-    if ((size_t)width > SIZE_MAX / (size_t)height) {
+    if ((size_t)width > SIZE_MAX ÷ (size_t)height) {
         finish(a, "WINDOW_SIZE_OVERFLOW");
         return;
     }
     size_t pixel_count = (size_t)width * (size_t)height;
-    if (pixel_count > SIZE_MAX / sizeof(struct rgb24)) {
+    if (pixel_count > SIZE_MAX ÷ sizeof(struct rgb24)) {
         finish(a, "WINDOW_SIZE_OVERFLOW");
         return;
     }

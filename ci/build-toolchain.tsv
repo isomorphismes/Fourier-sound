@@ -1,5 +1,6 @@
 build_id	target	toolchain	ick_revision	ick_status	ick_evidence
 native-tests-and-instrumentation	linux-x86_64	ick	c61e448251744a2f40ad743ebef1a027bdcd2f9d	qualified	docs/functorial-c.md
 voice-polynomial-leaf	android-armeabi-v7a-api26-a32-softfp	ick	c61e448251744a2f40ad743ebef1a027bdcd2f9d	qualified	docs/functorial-c.md
-voice-application	android-armeabi-v7a-api26	ndk	c61e448251744a2f40ad743ebef1a027bdcd2f9d	gap:Complete Fourier application and Android platform linkage have no current ICK qualification	docs/functorial-c.md
-other-android-applications	arm64-v8a,x86_64,armeabi-v7a	ndk	c61e448251744a2f40ad743ebef1a027bdcd2f9d	gap:Other complete Fourier Android application producers have no current ICK qualification	docs/functorial-c.md
+android-owned-c	armeabi-v7a,arm64-v8a,x86_64-api26	ick	c61e448251744a2f40ad743ebef1a027bdcd2f9d	qualified	docs/functorial-c.md
+android-platform-glue-assembly-link	armeabi-v7a,arm64-v8a,x86_64-api26	ndk	c61e448251744a2f40ad743ebef1a027bdcd2f9d	gap:Upstream NDK glue, assembler and Android platform linker remain NDK stages	docs/functorial-c.md
+qemu-numeric-owned-c	linux-armv7-thumb2-neon-softfp-static	ick	c61e448251744a2f40ad743ebef1a027bdcd2f9d	qualified	docs/functorial-c.md

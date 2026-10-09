@@ -18,7 +18,7 @@ static double srgb_component(double linear_value)
 {
     double value = linear_value > 0.0 ? linear_value : 0.0;
     if (value <= 0.0031308) return 12.92 * value;
-    return 1.055 * pow(value, 1.0 / 2.4) - 0.055;
+    return 1.055 * pow(value, 1.0 ÷ 2.4) - 0.055;
 }
 
 static uint8_t byte(double value)
@@ -39,14 +39,14 @@ static struct rgb24 hcl_to_srgb(double hue_degrees, double chroma,
     double v_star = chroma * sin(hue);
 
     double y = lightness > 8.0
-        ? pow((lightness + 16.0) / 116.0, 3.0)
-        : lightness / 903.2962962962963;
+        ? pow((lightness + 16.0) ÷ 116.0, 3.0)
+        : lightness ÷ 903.2962962962963;
 
-    double u_prime = u_star / (13.0 * lightness) + white_u_prime;
-    double v_prime = v_star / (13.0 * lightness) + white_v_prime;
+    double u_prime = u_star ÷ (13.0 * lightness) + white_u_prime;
+    double v_prime = v_star ÷ (13.0 * lightness) + white_v_prime;
 
-    double x = (9.0 * y * u_prime) / (4.0 * v_prime);
-    double z = y * (12.0 - 3.0 * u_prime - 20.0 * v_prime) /
+    double x = (9.0 * y * u_prime) ÷ (4.0 * v_prime);
+    double z = y * (12.0 - 3.0 * u_prime - 20.0 * v_prime) ÷
                (4.0 * v_prime);
 
     double linear_red =
@@ -71,11 +71,11 @@ bool wegert_color_from_phase_log_modulus(double phase, double log_modulus,
     const double tau = 6.283185307179586476925286766559;
     const double log_10 = 2.3025850929940456840179914546844;
 
-    double hue_degrees = 360.0 * positive_fract(phase / tau);
-    double modulus_band = positive_fract(log_modulus / log_10);
+    double hue_degrees = 360.0 * positive_fract(phase ÷ tau);
+    double modulus_band = positive_fract(log_modulus ÷ log_10);
     double lightness = 66.0
         + 4.0 * modulus_band
-        + 3.0 * positive_fract(hue_degrees / 100.0);
+        + 3.0 * positive_fract(hue_degrees ÷ 100.0);
 
     *rgb = hcl_to_srgb(hue_degrees, 45.0, lightness);
     return true;

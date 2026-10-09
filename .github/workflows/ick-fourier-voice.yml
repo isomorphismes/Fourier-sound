@@ -5,12 +5,6 @@ on:
     branches:
       - 'ick/fourier-voice-miro-a1'
   pull_request:
-    paths:
-      - 'fourier/ick_polynomial_leaf.c'
-      - 'tests/ick_polynomial_leaf_test.c'
-      - 'tests/reference/ick_polynomial_leaf.c'
-      - 'Makefile'
-      - '.github/workflows/ick-fourier-voice.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +13,7 @@ permissions:
 env:
   ICK_COMMIT: c61e448251744a2f40ad743ebef1a027bdcd2f9d
   ANDROID_NDK_VERSION: 27.2.12479018
-  ANDROID_SOURCE_COMMIT: ${{ github.sha }}
+  ANDROID_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   build:
@@ -32,90 +26,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Check out pinned ICK source and GCC reference
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: dilapidated-shed/ick
-          ref: ${{ env.ICK_COMMIT }}
-          path: .ick-toolchain
-          submodules: true
-          persist-credentials: false
-
-      - name: Install ICK build dependencies
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential file flex bison texinfo \
-            libgmp-dev libmpfr-dev libmpc-dev libisl-dev libzstd-dev \
-            binutils-arm-linux-gnueabi
-
-      - name: Materialize and build ARMv7 ICK
-        shell: bash
-        run: |
-          set -euxo pipefail
-          (
-            cd .ick-toolchain
-            . ick/SOURCE.lock
-            test "$(git -C gcc rev-parse HEAD)" = "$gcc_commit"
-            sh ick/materialize.sh gcc "$GITHUB_WORKSPACE/build/ick-source"
-          )
-          mkdir -p build/ick-build build/ick-stage build/ick/armeabi-v7a
-          (
-            cd build/ick-build
-            "$GITHUB_WORKSPACE/build/ick-source/configure" \
-              --target=arm-linux-gnueabi \
-              --prefix="$GITHUB_WORKSPACE/build/ick-stage" \
-              --with-as="$(command -v arm-linux-gnueabi-as)" \
-              --with-ld="$(command -v arm-linux-gnueabi-ld)" \
-              --enable-languages=c \
-              --disable-bootstrap \
-              --disable-multilib \
-              --disable-nls \
-              --disable-shared \
-              --disable-threads \
-              --without-headers \
-              --disable-libatomic \
-              --disable-libgomp \
-              --disable-libquadmath \
-              --disable-libssp \
-              --disable-libvtv
-          )
-          make -C build/ick-build -j2 all-gcc
-          make -C build/ick-build install-gcc
-          build/ick-stage/bin/arm-linux-gnueabi-gcc --version
-
-      - name: Compile Fourier polynomial leaf with ICK A32 (application remains NDK)
-        shell: bash
-        run: |
-          set -euxo pipefail
-          ick="$GITHUB_WORKSPACE/build/ick-stage/bin/arm-linux-gnueabi-gcc"
-          "$ick" \
-            -march=armv7-a -marm -mfpu=vfpv3-d16 -mfloat-abi=softfp \
-            -std=c11 -O2 -fPIC -ffreestanding -nostdinc \
-            -fvisibility=hidden \
-            -c fourier/ick_polynomial_leaf.c \
-            -o build/ick/armeabi-v7a/fourier_voice_leaf.o
-
-          arm-linux-gnueabi-readelf -h build/ick/armeabi-v7a/fourier_voice_leaf.o \
-            | tee build/ick/armeabi-v7a/ick-leaf.elf
-          arm-linux-gnueabi-readelf -A build/ick/armeabi-v7a/fourier_voice_leaf.o \
-            | tee build/ick/armeabi-v7a/ick-leaf.attributes
-          grep -q 'Machine:.*ARM' build/ick/armeabi-v7a/ick-leaf.elf
-          grep -q 'Tag_CPU_arch: v7' build/ick/armeabi-v7a/ick-leaf.attributes
-          grep -q 'Tag_ARM_ISA_use: Yes' build/ick/armeabi-v7a/ick-leaf.attributes
-          grep -q 'Tag_ABI_align_needed: 8-byte' build/ick/armeabi-v7a/ick-leaf.attributes
-          arm-linux-gnueabi-readelf -s build/ick/armeabi-v7a/fourier_voice_leaf.o > build/ick/armeabi-v7a/ick-leaf.symbols
-          grep -q '\$a' build/ick/armeabi-v7a/ick-leaf.symbols
-          ! grep -q '\$t' build/ick/armeabi-v7a/ick-leaf.symbols
-          if grep -q 'Tag_ABI_VFP_args: VFP registers' build/ick/armeabi-v7a/ick-leaf.attributes; then
-            echo 'hard-float ABI is not Android armeabi-v7a' >&2
-            exit 1
-          fi
-          arm-linux-gnueabi-nm -u build/ick/armeabi-v7a/fourier_voice_leaf.o \
-            | tee build/ick/armeabi-v7a/ick-leaf.undefined
-
-      - uses: isomorphisms/ai-ci/ick-host@ba3ff90023b09e525313793554edecf2141ff95b
+      - uses: isomorphisms/ai-ci/ick-host@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
         id: host-ick
       - name: Run host reference tests with the literal-glyph frontend
         run: make test ICK="${{ steps.host-ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.host-ick.outputs.link_flags }}"
@@ -138,20 +49,64 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
         with:
           packages: 'platforms;android-36 build-tools;36.0.0 ndk;27.2.12479018'
+
+      - name: Qualify the existing fortified ICK Android profile
+        uses: isomorphisms/ai-ci/ick-android@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+        id: android-ick
+        with:
+          abi: armeabi-v7a
+          ndk: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+          fortify-source: '2'
+
+      - name: Compile and inspect the specialized ICK A32 polynomial leaf
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ick="${{ steps.android-ick.outputs.compiler }}"
+          tools="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          mkdir -p build/ick/armeabi-v7a
+          "$ick" \
+            -march=armv7-a -marm -mfpu=vfpv3-d16 -mfloat-abi=softfp \
+            -std=c11 -O2 -fPIC -ffreestanding -nostdinc \
+            -fvisibility=hidden \
+            -S fourier/ick_polynomial_leaf.c \
+            -o build/ick/armeabi-v7a/fourier_voice_leaf.s
+          "$tools/armv7a-linux-androideabi26-clang" -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp \
+            -c build/ick/armeabi-v7a/fourier_voice_leaf.s -o build/ick/armeabi-v7a/fourier_voice_leaf.o
+
+          "$tools/llvm-readelf" -h build/ick/armeabi-v7a/fourier_voice_leaf.o \
+            | tee build/ick/armeabi-v7a/ick-leaf.elf
+          "$tools/llvm-readelf" -A build/ick/armeabi-v7a/fourier_voice_leaf.o \
+            | tee build/ick/armeabi-v7a/ick-leaf.attributes
+          grep -q 'Machine:.*ARM' build/ick/armeabi-v7a/ick-leaf.elf
+          grep -q 'Tag_CPU_arch: v7' build/ick/armeabi-v7a/ick-leaf.attributes
+          grep -q 'Tag_ARM_ISA_use: Yes' build/ick/armeabi-v7a/ick-leaf.attributes
+          grep -q 'Tag_ABI_align_needed: 8-byte' build/ick/armeabi-v7a/ick-leaf.attributes
+          "$tools/llvm-readelf" -s build/ick/armeabi-v7a/fourier_voice_leaf.o > build/ick/armeabi-v7a/ick-leaf.symbols
+          grep -q '\$a' build/ick/armeabi-v7a/ick-leaf.symbols
+          ! grep -q '\$t' build/ick/armeabi-v7a/ick-leaf.symbols
+          if grep -q 'Tag_ABI_VFP_args: VFP registers' build/ick/armeabi-v7a/ick-leaf.attributes; then
+            echo 'hard-float ABI is not Android armeabi-v7a' >&2
+            exit 1
+          fi
+          "$tools/llvm-nm" -u build/ick/armeabi-v7a/fourier_voice_leaf.o \
+            | tee build/ick/armeabi-v7a/ick-leaf.undefined
 
       - name: Build MIRO-only diagnostic and stripped release APKs
         shell: bash
         run: |
           set -euxo pipefail
           make android-ick-leaf-armv7 miro-release-compare \
+            ICK_ARMV7="${{ steps.android-ick.outputs.compiler }}" \
+            ICK_BIONIC_HEADERS="${{ steps.android-ick.outputs.header_overlay }}" \
             ICK_ARMV7_OBJECT="$GITHUB_WORKSPACE/build/ick/armeabi-v7a/fourier_voice_leaf.o"
           printf '%s\n' "$ICK_COMMIT" > build/ick-source-commit.txt
           git rev-parse HEAD > build/fourier-sound-source-commit.txt
@@ -168,14 +123,14 @@ jobs:
           ick_debug=build/symbols/ick/libfourier_voice.so.debug
           {
             printf 'variant\tso_bytes\tapk_bytes\tseparate_debug_bytes\n'
-            printf 'NDK\t%s\t%s\t%s\n' \
+            printf 'ICK-baseline\t%s\t%s\t%s\n' \
               "$(stat -c %s "$ndk_so")" "$(stat -c %s "$ndk_apk")" "$(stat -c %s "$ndk_debug")"
-            printf 'ICK-leaf\t%s\t%s\t%s\n' \
+            printf 'ICK-specialized-leaf\t%s\t%s\t%s\n' \
               "$(stat -c %s "$ick_so")" "$(stat -c %s "$ick_apk")" "$(stat -c %s "$ick_debug")"
           } | tee build/miro-release-sizes.tsv
           ndk_apk_bytes="$(stat -c %s "$ndk_apk")"
           ick_apk_bytes="$(stat -c %s "$ick_apk")"
-          printf 'ick_minus_ndk_apk_bytes\t%s\n' "$((ick_apk_bytes - ndk_apk_bytes))" \
+          printf 'leaf_minus_baseline_apk_bytes\t%s\n' "$((ick_apk_bytes - ndk_apk_bytes))" \
             | tee -a build/miro-release-sizes.tsv
           {
             echo '### MIRO stripped release sizes'
@@ -205,9 +160,9 @@ jobs:
           "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm" build/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so \
             | grep -q 'fourier_polynomial_cartesian_ick'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: fourier-voice-ick-leaf-miro-a1-${{ github.sha }}
+          name: fourier-voice-ick-leaf-miro-a1-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             build/fourier-voice-ick-leaf-armeabi-v7a.apk
             build/fourier-voice-ick-leaf-armeabi-v7a.apk.sha256

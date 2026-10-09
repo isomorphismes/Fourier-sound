@@ -69,7 +69,7 @@ static bool make_acceptance_input(struct application *a)
      * second contains an exact 440 cycles, so looping has no boundary click. */
     const double tau = 6.283185307179586476925286766559;
     for (size_t i = 0; i < frames; ++i) {
-        double phase = tau * 440.0 * (double)i / (double)a->properties.sample_rate;
+        double phase = tau * 440.0 * (double)i ÷ (double)a->properties.sample_rate;
         a->acceptance_signal[i] = (float)(0.20 * sin(phase));
     }
     return speaker_input_set(&a->input, a->acceptance_signal, frames, true);
