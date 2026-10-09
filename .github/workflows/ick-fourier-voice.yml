@@ -84,7 +84,7 @@ jobs:
 
           "$tools/llvm-readelf" -h build/ick/armeabi-v7a/fourier_voice_leaf.o \
             | tee build/ick/armeabi-v7a/ick-leaf.elf
-          "$tools/llvm-readelf" -A build/ick/armeabi-v7a/fourier_voice_leaf.o \
+          arm-linux-gnueabi-readelf -A build/ick/armeabi-v7a/fourier_voice_leaf.o \
             | tee build/ick/armeabi-v7a/ick-leaf.attributes
           grep -q 'Machine:.*ARM' build/ick/armeabi-v7a/ick-leaf.elf
           grep -q 'Tag_CPU_arch: v7' build/ick/armeabi-v7a/ick-leaf.attributes

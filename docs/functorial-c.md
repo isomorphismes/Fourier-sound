@@ -48,6 +48,12 @@ version codes, receipts, stripping checks, and package verification. Historical
 artifacts; both now use ICK for owned C. Runtime provenance names the application
 compiler and platform link separately.
 
+The specialized leaf keeps its GNU ARM attribute oracle. The pinned compiler
+action installs `arm-linux-gnueabi-readelf`; its tag spelling matches the existing
+ARMv7/A32/alignment/softfp predicates. NDK tools still inspect ELF headers and
+code-mapping symbols. LLVM's structured attribute display does not match those
+GNU text predicates, so the attribute reader is selected explicitly.
+
 Current-head hosted APK, sanitizer, media-corpus, and QEMU results remain workflow
 evidence. Local compile/link results do not assert microphone/speaker runtime,
 installation, physical-device acceptance, or release promotion.
@@ -91,7 +97,7 @@ build is a separately selected diagnostic lane. No automatic fallback, new
 APK, microphone/speaker runtime, replacement install or physical acceptance is
 claimed. GPU and numeric-screening branches were not replaced by this repair.
 
-## 2026-10-08 Icky Horner source pass
+## Historical qualification: 2026-10-08 Icky Horner source pass
 
 The production header-free polynomial leaf now composes
 `coefficient_at → cartesian_product → with_added_coefficient →
