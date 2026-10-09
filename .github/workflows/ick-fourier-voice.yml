@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  ICK_COMMIT: c5d28dde9cc333a562b907785d0370b725146cdf
+  ICK_COMMIT: c61e448251744a2f40ad743ebef1a027bdcd2f9d
   ANDROID_NDK_VERSION: 27.2.12479018
   ANDROID_SOURCE_COMMIT: ${{ github.sha }}
 
@@ -115,7 +115,7 @@ jobs:
           arm-linux-gnueabi-nm -u build/ick/armeabi-v7a/fourier_voice_leaf.o \
             | tee build/ick/armeabi-v7a/ick-leaf.undefined
 
-      - uses: isomorphisms/ai-ci/ick-host@f538ed81669ceb2d521b65fc3b3af7c2e51dd2f2
+      - uses: isomorphisms/ai-ci/ick-host@ba3ff90023b09e525313793554edecf2141ff95b
         id: host-ick
       - name: Run host reference tests with the literal-glyph frontend
         run: make test ICK="${{ steps.host-ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.host-ick.outputs.link_flags }}"

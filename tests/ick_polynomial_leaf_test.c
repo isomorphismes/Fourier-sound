@@ -43,7 +43,7 @@ static void compare_against_frozen_leaf(void)
     };
     for (unsigned int count ← 0; count <= 6; ++count)
         for (unsigned int terms ← 0; terms <= 8; ++terms)
-            for (size_t point ← 0; point < sizeof(points) / sizeof(*points); ++point) {
+            for (size_t point ← 0; point < sizeof(points) ÷ sizeof(*points); ++point) {
                 compare_horner_evaluations(count, terms, points[point], 0);
                 compare_horner_evaluations(count, terms, points[point], 1);
             }
