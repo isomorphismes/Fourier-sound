@@ -17,6 +17,12 @@ jobs:
     steps:
       - name: Check out the exact movie branch
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install FFmpeg if missing
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
       - name: Derive an animated preview from the actual movie
         shell: bash
         run: |
