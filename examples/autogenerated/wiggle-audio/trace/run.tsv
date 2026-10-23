@@ -1,0 +1,11 @@
+schema	wiggle-v1
+evidence	offline-computed
+origin	audio-driven
+backend	Nightingale C DFT prototype; host CPU
+fps	5
+frames	154
+width	96
+height	192
+sample_rate	48000
+window_lookahead_seconds	1/5
+audio	clip.flac

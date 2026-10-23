@@ -1,0 +1,19 @@
+source_url	https://upload.wikimedia.org/wikipedia/commons/3/31/Florence_Nightingale_voice_-_1576A_2nd_Rendition.ogg
+source_sha1	5de570b67b20f4e2932fb960b3e3b0f071981544
+source_sha256	ed7f471d9968dd1c660a88c269d8de04180a2707ce99eb78e241bea8b17fcfa1
+splice_seconds	0.250000:23.504400,51.074600:58.493900
+splice_operation	atrim;asetpts=PTS-STARTPTS;concat=n=2:v=0:a=1
+clip_flac_sha256	b942806310a6d6d5f814495073d0bfea9483caaa46bf00a98d1b42fb3e3e1023
+clip_s16_sha256	460f08ea37ffb4321b16e0ca6dbca69a222eeb7bc73334b6739a52137f84b29d
+sample_rate	48000
+sample_count	1472338
+sample_format	s16le mono
+fps	5
+frames	154
+width	96
+height	192
+window_size	128
+polynomial_terms	24
+window_lookahead_seconds	1/5
+source_role	historical-recording offline prototype; no denoising
+adapter_execution	NOT_RUN: admitted ICK compiler unavailable

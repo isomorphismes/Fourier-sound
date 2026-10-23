@@ -1,0 +1,36 @@
+name: Nightingale offline reference
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: isomorphisms/ai-ci/ick-host@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+        id: ick
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/kitchen
+          ref: 1a4f49cdd2f22f8c7a7ae52862ca9b98a301b913
+          path: .kitchen
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: dilapidated-shed/ithon
+          ref: 74ab6d6044b07b76a910978437a34a6b5ac6acda
+          path: .ithon
+          persist-credentials: false
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y ffmpeg
+      - run: make wiggle-reference ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}" KITCHEN_DIR="$GITHUB_WORKSPACE/.kitchen" ITHON="$GITHUB_WORKSPACE/.ithon/ithon"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nightingale-offline-${{ github.event.pull_request.head.sha || github.sha }}
+          path: build/wiggle-reference/
+          if-no-files-found: error
