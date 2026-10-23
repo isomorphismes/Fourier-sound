@@ -1,0 +1,24 @@
+name: GPU Fourier reference driver
+on:
+  pull_request:
+  push:
+    branches: ['gpu/fft-wegert-resident']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: isomorphisms/ai-ci/ick-host@903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+        id: ick
+      - name: Install host GLES driver headers
+        run: sudo apt-get update
+      - run: sudo apt-get install -y libegl1-mesa-dev libgles2-mesa-dev
+      - name: Execute production shaders against the independent DFT
+        run: make gpu-reference-test ICK="${{ steps.ick.outputs.compiler }}" ICK_LINK_FLAGS="${{ steps.ick.outputs.link_flags }}"
+# All three ABI GPU APKs, import checks, and sizes are built by native-audio.yml.

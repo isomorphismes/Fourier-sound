@@ -1,8 +1,8 @@
 # Fourier-sound
 
-Voice- and sensor-driven visual mathematics on phones.
+**Writing the simplest programs:** read microphone samples and turn them into graphics with the fewest executable bytes and runtime dependencies possible. Investigate the phone's **hardware abstraction layer (HAL)** and work toward a genuinely **libc-free** path. This is a research target, **not** a current implementation claim. [Minimal microphone/HAL experiment](docs/minimal-microphone-hal.md).
 
-The working target is **phyphox-like acquisition with Wegert-style complex-function output**: expose phone hardware through small reusable interfaces, analyze the resulting streams with replaceable mathematical decompositions, map the result into complex objects, and render those objects with phase/domain coloring.
+Voice- and sensor-driven visual mathematics on phones. The working design is **phyphox-like acquisition with Wegert-style complex-function output**: expose phone hardware through small replaceable interfaces, decompose the sample stream, construct a complex object, and draw it. Android AAudio is the present microphone backend, not direct vendor HAL access.
 
 ## First reference experiment
 
@@ -58,16 +58,23 @@ The application should depend on the small generic acquisition/sink contract, no
 
 See [docs/architecture.md](docs/architecture.md).
 
-## First native audio implementation
+## Native microphone → Fourier → graphics
 
-The audio branch adds a plain C microphone source, an AAudio backend, a bounded
-PCM buffer and a native acceptance APK. Captured PCM also passes through
-`fourier/pcm_block`, an Android-free conversion boundary for mathematical code.
-It introduces no decomposition algorithm or visualization.
+The current `android/voice_main.c` connects the **live** Android AAudio
+microphone interface to a bounded PCM buffer, framed samples, Fourier
+coefficients, a complex-field construction, and Wegert-style coloring on the
+native window. The separate `android/native_main.c` remains the simpler
+microphone acceptance program. Both are native-only Android applications
+without application DEX; neither is presently libc-free.
 
-Run `make test ICK=/path/to/ick` for the required ICK host checks. See [audio implementation](docs/audio-input.md)
-for the accelerometer comparison and [acceptance](docs/acceptance.md) for APK
-builds and the MIRO A1 procedure.
+Florence Nightingale's 1890 recording supplies a deterministic **offline** movie
+example, not proof of microphone or HAL access. The goal is real, physically
+accepted microphone → pixels, then smaller executable code and a studied HAL
+boundary. Do not infer on-device acceptance from the source build or movie.
+
+Run `make test ICK=/path/to/ick` for host checks. See the [smallest-program experiment](docs/minimal-microphone-hal.md),
+[audio implementation](docs/audio-input.md), [Android display path](docs/android-rendering.md),
+and [physical acceptance](docs/acceptance.md).
 
 ## References
 

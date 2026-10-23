@@ -104,6 +104,7 @@ jobs:
       - name: Build owned C with ICK, link with NDK, and verify each APK
         run: >-
           make android-${{ matrix.abi }}
+          measured-${{ matrix.abi }}
           "${{ matrix.compiler_variable }}=${{ steps.android-ick.outputs.compiler }}"
           ICK_BIONIC_HEADERS="${{ steps.android-ick.outputs.header_overlay }}"
       - name: Source revision
@@ -122,4 +123,8 @@ jobs:
             build/fourier-voice-${{ matrix.abi }}.apk.sha256
             build/*-${{ matrix.abi }}.receipt.tsv
             build/source-commit.txt
+            build/fourier-voice-*-v7.apk*
+            build/*-v7.receipt.tsv
+            build/measured/${{ matrix.abi }}/
+            build/freestanding/${{ matrix.abi }}/
           if-no-files-found: error

@@ -124,8 +124,21 @@ $(BUILD)/complex-plot-test: tests/complex_plot_test.c render/complex_plot.c rend
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) $(INCLUDES) $< render/complex_plot.c render/wegert.c fourier/complex_field.c -lm -o $@
 
+VOICE_STARTUP_TEST_SOURCES = tests/voice_startup_test.c fourier/fft.c fourier/framing.c fourier/pcm_block.c fourier/complex_field.c render/complex_plot.c render/wegert.c audio/interface/audio_result.c fourier/ick_polynomial_leaf.c
+$(BUILD)/voice-startup-test: $(VOICE_STARTUP_TEST_SOURCES) android/voice_main.c $(HEADERS) tests/fake/android/log.h tests/fake/android_native_app_glue.h
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -Itests/fake $(INCLUDES) $(VOICE_STARTUP_TEST_SOURCES) -lm -o $@
+
+$(BUILD)/voice-startup-ick-test: $(VOICE_STARTUP_TEST_SOURCES) android/voice_main.c $(HEADERS) tests/fake/android/log.h tests/fake/android_native_app_glue.h
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -DFOURIER_USE_ICK_POLYNOMIAL -DFOURIER_ICK_VERIFY -Itests/fake $(INCLUDES) $(VOICE_STARTUP_TEST_SOURCES) -lm -o $@
+
+test: $(BUILD)/voice-startup-test $(BUILD)/voice-startup-ick-test
+
 test: $(BUILD)/complex-plot-test $(BUILD)/pcm-test $(BUILD)/backend-test $(BUILD)/output-backend-test $(BUILD)/speaker-input-test $(BUILD)/render-test $(BUILD)/fft-test $(BUILD)/framing-test $(BUILD)/voice-signal-test $(BUILD)/ick-polynomial-leaf-test $(BUILD)/rgb24-rgba8888-test $(BUILD)/native-window-output-test
 	$(BUILD)/complex-plot-test
+	$(BUILD)/voice-startup-test
+	$(BUILD)/voice-startup-ick-test
 	$(BUILD)/pcm-test
 	$(BUILD)/sparse-series-test
 	$(BUILD)/backend-test
@@ -306,3 +319,89 @@ $(BUILD)/fourier-voice-ick-leaf-miro-release.apk: $(BUILD)/release/ick/lib/armea
 android-miro-release: $(BUILD)/fourier-voice-miro-release.apk
 android-ick-leaf-miro-release: $(BUILD)/fourier-voice-ick-leaf-miro-release.apk
 miro-release-compare: android-miro-release android-ick-leaf-miro-release
+
+# GPU candidate: upload framed PCM, compute FFT in SSBOs, render without spectrum readback.
+GPU_VOICE_SOURCES = android/gpu_voice_main.c android/permission.c \
+	audio/android/aaudio_input.c audio/interface/pcm_ring.c \
+	audio/interface/audio_result.c fourier/pcm_block.c fourier/framing.c \
+	render/android/gpu_voice_pipeline.c
+
+$(BUILD)/android/armeabi-v7a/voice-gpu-unstripped/lib/armeabi-v7a/libfourier_voice.so: $(addprefix $(BUILD)/android/armeabi-v7a/owned/,$(GPU_VOICE_SOURCES:.c=.o)) $(BUILD)/android/armeabi-v7a/glue.o
+	mkdir -p $(@D)
+	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang $(ARMV7_TARGET_FLAGS) $(ANDROID_SHARED_FLAGS) $^ -laaudio -landroid -llog -lEGL -lGLESv3 -lm -o $@
+
+$(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-gpu-unstripped/lib/armeabi-v7a/libfourier_voice.so
+	mkdir -p $(@D) $(BUILD)/symbols/gpu
+	$(TOOLCHAIN)/llvm-objcopy --only-keep-debug $< $(BUILD)/symbols/gpu/libfourier_voice.so.debug
+	cp $< $@
+	$(TOOLCHAIN)/llvm-strip --strip-unneeded $@
+	! $(TOOLCHAIN)/llvm-readelf -S $@ | grep -q '\.debug_'
+	$(TOOLCHAIN)/llvm-readelf -h $@
+
+$(BUILD)/fourier-voice-gpu-miro-release.apk: $(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so android/GpuVoiceManifest.xml
+	$(call package_native,org.isomorphismes.fouriersound.voice,5,0.5.0-gpu,android/GpuVoiceManifest.xml,$<,armeabi-v7a,$@)
+
+.PHONY: android-gpu-miro-release
+android-gpu-miro-release: $(BUILD)/fourier-voice-gpu-miro-release.apk
+
+define measured_abi
+$(BUILD)/android/$(1)/voice-gpu/libfourier_voice.so: $(addprefix $(BUILD)/android/$(1)/owned/,$(GPU_VOICE_SOURCES:.c=.o)) $(BUILD)/android/$(1)/glue.o
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/$(2) $(3) $(ANDROID_SHARED_FLAGS) $$^ -laaudio -landroid -llog -lEGL -lGLESv3 -lm -o $$@
+
+$(BUILD)/measured/$(1)/cpu/libfourier_voice.so: $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/llvm-objcopy --only-keep-debug $$< $$@.debug
+	cp $$< $$@
+	$(TOOLCHAIN)/llvm-strip --strip-unneeded $$@
+
+$(BUILD)/measured/$(1)/gpu/libfourier_voice.so: $(BUILD)/android/$(1)/voice-gpu/libfourier_voice.so
+	mkdir -p $$(@D)
+	$(TOOLCHAIN)/llvm-objcopy --only-keep-debug $$< $$@.debug
+	cp $$< $$@
+	$(TOOLCHAIN)/llvm-strip --strip-unneeded $$@
+
+$(BUILD)/fourier-voice-cpu-$(1)-v7.apk: $(BUILD)/measured/$(1)/cpu/libfourier_voice.so android/VoiceManifest.xml
+	$(call package_native,org.isomorphismes.fouriersound.voice,7,0.7.0,android/VoiceManifest.xml,$(BUILD)/measured/$(1)/cpu/libfourier_voice.so,$(1),$(BUILD)/fourier-voice-cpu-$(1)-v7.apk)
+
+$(BUILD)/fourier-voice-gpu-$(1)-v7.apk: $(BUILD)/measured/$(1)/gpu/libfourier_voice.so android/GpuVoiceManifest.xml
+	$(call package_native,org.isomorphismes.fouriersound.voice,7,0.7.0-gpu,android/GpuVoiceManifest.xml,$(BUILD)/measured/$(1)/gpu/libfourier_voice.so,$(1),$(BUILD)/fourier-voice-gpu-$(1)-v7.apk)
+
+$(BUILD)/freestanding/$(1)/polynomial.s: fourier/ick_polynomial_leaf.c
+	mkdir -p $$(@D)
+	$(4) -std=c17 -Os -fPIC -ffreestanding -fno-builtin -fno-stack-protector $(3) -S $$< -o $$@
+
+$(BUILD)/freestanding/$(1)/polynomial.o: $(BUILD)/freestanding/$(1)/polynomial.s
+	$(TOOLCHAIN)/$(2) $(3) -c $$< -o $$@
+	$(TOOLCHAIN)/llvm-nm -u $$@ > $$@.undefined
+	test ! -s $$@.undefined
+	$(TOOLCHAIN)/llvm-readelf -r $$@ > $$@.relocations
+
+.PHONY: measured-$(1)
+measured-$(1): $(BUILD)/fourier-voice-cpu-$(1)-v7.apk $(BUILD)/fourier-voice-gpu-$(1)-v7.apk $(BUILD)/freestanding/$(1)/polynomial.o
+	$(TOOLCHAIN)/llvm-readelf -d $(BUILD)/measured/$(1)/cpu/libfourier_voice.so > $(BUILD)/measured/$(1)/cpu/dynamic.txt
+	$(TOOLCHAIN)/llvm-readelf -d $(BUILD)/measured/$(1)/gpu/libfourier_voice.so > $(BUILD)/measured/$(1)/gpu/dynamic.txt
+	$(TOOLCHAIN)/llvm-nm -D --undefined-only $(BUILD)/measured/$(1)/cpu/libfourier_voice.so > $(BUILD)/measured/$(1)/cpu/undefined.txt
+	$(TOOLCHAIN)/llvm-nm -D --undefined-only $(BUILD)/measured/$(1)/gpu/libfourier_voice.so > $(BUILD)/measured/$(1)/gpu/undefined.txt
+	! grep -E 'glMapBufferRange|glReadPixels|fourier_fft_real_radix2' $(BUILD)/measured/$(1)/gpu/undefined.txt
+	grep -F 'glDispatchCompute' $(BUILD)/measured/$(1)/gpu/undefined.txt
+	printf 'artifact\tbytes\n' > $(BUILD)/measured/$(1)/sizes.tsv
+	stat --printf='%n\t%s\n' $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so $(BUILD)/android/$(1)/voice-gpu/libfourier_voice.so $(BUILD)/measured/$(1)/cpu/libfourier_voice.so $(BUILD)/measured/$(1)/gpu/libfourier_voice.so $(BUILD)/measured/$(1)/cpu/libfourier_voice.so.debug $(BUILD)/measured/$(1)/gpu/libfourier_voice.so.debug $(BUILD)/fourier-voice-cpu-$(1)-v7.apk $(BUILD)/fourier-voice-gpu-$(1)-v7.apk >> $(BUILD)/measured/$(1)/sizes.tsv
+endef
+
+$(eval $(call measured_abi,armeabi-v7a,armv7a-linux-androideabi26-clang,$(ARMV7_TARGET_FLAGS),$(ICK_ARMV7)))
+$(eval $(call measured_abi,arm64-v8a,aarch64-linux-android26-clang,-march=armv8-a -ffixed-x18,$(ICK_ARM64)))
+$(eval $(call measured_abi,x86_64,x86_64-linux-android26-clang,-march=x86-64,$(ICK_X86_64)))
+
+# Desktop driver qualification is deliberately separate from ordinary host
+# tests and physical Android acceptance. Headers/libraries are supplied by the
+# host; the APK never defines FOURIER_GPU_DIAGNOSTICS.
+GPU_HOST_HEADERS ?=
+GPU_HOST_LIBS ?= -lEGL -lGLESv2
+$(BUILD)/gpu-reference-test: tests/gpu_reference_test.c render/android/gpu_voice_pipeline.c render/android/gpu_voice_pipeline.h fourier/dft.c fourier/framing.c fourier/complex_field.c render/wegert.c
+	mkdir -p $(@D)
+	$(CC) -std=c17 $(CFLAGS) $(WARN) -DFOURIER_GPU_DIAGNOSTICS -DEGL_NO_PLATFORM_SPECIFIC_TYPES -Itests/fake $(INCLUDES) $(GPU_HOST_HEADERS) $< render/android/gpu_voice_pipeline.c fourier/dft.c fourier/framing.c fourier/complex_field.c render/wegert.c $(GPU_HOST_LIBS) -lm -o $@
+
+.PHONY: gpu-reference-test
+gpu-reference-test: $(BUILD)/gpu-reference-test
+	LIBGL_ALWAYS_SOFTWARE=1 $(BUILD)/gpu-reference-test

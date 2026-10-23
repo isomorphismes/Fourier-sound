@@ -53,6 +53,7 @@ struct application {
     bool resumed;
     bool focused;
     bool window_ready;
+    bool validation_passed;
     float recent[SAMPLE_COUNT];
     size_t recent_count;
     uint32_t dropped;
@@ -280,6 +281,7 @@ static bool render_spectral_field(const struct complex_value coefficients[SAMPLE
 
 static bool render_voice(struct application *a)
 {
+    if (!a->validation_passed) return false;
     struct complex_value coefficients[SAMPLE_COUNT];
     double input_rms, framed_rms;
     if (!frame_voice_spectrum(a, coefficients, &input_rms, &framed_rms)) return false;
@@ -312,7 +314,8 @@ static bool render_voice(struct application *a)
 
 static void start_if_ready(struct application *a)
 {
-    if (!a->resumed || !a->focused || !a->window_ready || a->input) return;
+    if (!a->validation_passed || !a->resumed || !a->focused ||
+        !a->window_ready || a->input) return;
     if (!microphone_permission(a->app->activity)) {
         LOG("VOICE_PERMISSION microphone permission required");
         return;
@@ -389,7 +392,7 @@ static void command(struct android_app *app, int32_t code)
 
 static void consume(struct application *a)
 {
-    if (!a->input) return;
+    if (!a->validation_passed || !a->input) return;
 
     uint64_t notification;
     ssize_t drained = read(android_audio_input_ready_fd(a->input),
@@ -448,15 +451,27 @@ void android_main(struct android_app *app)
     app->onAppCmd = command;
 
     LOG("VOICE_APP started");
-    (void)coefficient_self_test();
+    a.validation_passed = coefficient_self_test();
+    if (!a.validation_passed)
+        LOG("VOICE_STARTUP_BLOCKED test=coefficient");
 #ifdef FOURIER_USE_ICK_POLYNOMIAL
 #ifdef FOURIER_ICK_VERIFY
-    (void)ick_polynomial_self_test();
+    if (!ick_polynomial_self_test()) {
+        a.validation_passed = false;
+        LOG("VOICE_STARTUP_BLOCKED test=ick-polynomial");
+    }
 #endif
     LOG("VOICE_COMPILER_PATH application_c=ICK polynomial_leaf=ICK armv7-a32 platform_link=Android-NDK");
 #else
     LOG("VOICE_COMPILER_PATH application_c=ICK polynomial=ICK platform_link=Android-NDK");
 #endif
+
+    if (!a.validation_passed) {
+        LOG("VOICE_STARTUP status=FAIL microphone=blocked frames=blocked");
+        ANativeActivity_finish(app->activity);
+    } else {
+        LOG("VOICE_STARTUP status=PASS");
+    }
 
     while (!app->destroyRequested) {
         struct android_poll_source *source = NULL;
@@ -471,5 +486,7 @@ void android_main(struct android_app *app)
     }
 
     close_input(&a);
+    app->onAppCmd = NULL;
+    app->userData = NULL;
     LOG("VOICE_APP stopped");
 }
