@@ -1,0 +1,26 @@
+evidence	HOST_TESTED offline historical recording
+fixture_source_base	930b24d2311539e345255877830aaf86c9da3410
+host_compiler_source	fbe86e23d55cfec2000c08e61deea2a407fd7175
+host_compiler_driver_sha256	810dc479ac07e267c6bc5901ff2f45a507ce4a4a3ad8601980b00dea23436a7f
+host_compiler_cc1_sha256	d8b2457cf91164b558b6a8d71bbccf77ff786edf057cae9727bb18edb92ef1c2
+planner_source	isomorphisms/kitchen 1a4f49cdd2f22f8c7a7ae52862ca9b98a301b913 tasks/wiggle-video/2.pi
+checked_ithon_source	dilapidated-shed/ithon 74ab6d6044b07b76a910978437a34a6b5ac6acda
+frames	154
+fps	5
+movie_seconds	30.8
+dimensions	96x192
+coefficients_checked	19712
+independent_reference	long-double direct DFT; negative exponential; normalization 1/128; DC deliberately zeroed
+max_coefficient_error	1.27195811636e-15
+all_window_endpoints	PASS exact original 9600-sample increments; final endpoint 1472338
+wrong_endpoint_mutant	REJECTED exit 134 at endpoint assertion
+audio_alignment_lag_samples	0
+decoded_audio_correlation	0.999988254
+audio_reference_samples	1472338
+decoded_audio_samples	1477904 including encoder/padding tail
+lookahead_seconds	1/5 preserved original window-end convention
+movie_sha256	7da8250bd550e17c85b107303049584b7aefe107cc4f8453df8f8fb1a122dcf9
+checkpoints_sha256	5f89c660da1b6707bec8cb05a0c81d374b6353760e6f0ffc34eaed25af4e5cc1
+timeline_sha256	6689980870f41a038dfe971a374c22284ccc834c3b81b66d3a4bf2c470f34a30
+canonical_kitchen_movie_tests	PASS no-audio, audio, invalid pattern, missing output, real FFmpeg smoke
+physical_microphone_HAL_GPU	NOT_RUN
