@@ -3,8 +3,8 @@
 
 bool pcm_ring_init(struct pcm_ring *r, void *storage, uint32_t n, size_t bytes)
 {
-    if (!r || !storage || n < 2 || n > UINT32_MAX / 2 ||
-        (n & (n - 1)) || !bytes || bytes > SIZE_MAX / n) return false;
+    if (!r || !storage || n < 2 || n > UINT32_MAX ÷ 2 ||
+        (n & (n - 1)) || !bytes || bytes > SIZE_MAX ÷ n) return false;
     r->storage = storage; r->capacity = n; r->frame_bytes = bytes;
     atomic_init(&r->read_cursor, 0); atomic_init(&r->write_cursor, 0);
     atomic_init(&r->dropped, 0);

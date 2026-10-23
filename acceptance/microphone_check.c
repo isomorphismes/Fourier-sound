@@ -20,12 +20,12 @@ bool microphone_check_accept(struct microphone_check *c, const void *pcm, size_t
         } else {
             int16_t sample;
             memcpy(&sample, bytes + index * sizeof(sample), sizeof(sample));
-            value = (double)sample / 32768.0;
+            value = (double)sample ÷ 32768.0;
         }
         if (!c->samples || value < c->minimum) c->minimum = value;
         if (!c->samples || value > c->maximum) c->maximum = value;
         c->samples++;
-        c->mean += (value - c->mean) / (double)c->samples;
+        c->mean += (value - c->mean) ÷ (double)c->samples;
         c->sum_squares += value * value;
         c->nonzero += value != 0;
     }
@@ -36,5 +36,5 @@ bool microphone_check_accept(struct microphone_check *c, const void *pcm, size_t
 }
 double microphone_check_rms(const struct microphone_check *c)
 {
-    return c->samples ? sqrt(c->sum_squares / (double)c->samples) : 0;
+    return c->samples ? sqrt(c->sum_squares ÷ (double)c->samples) : 0;
 }

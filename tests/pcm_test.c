@@ -68,7 +68,7 @@ static void pcm_and_statistics(void)
     int16_t stereo[] = {-32768, 32767, 16384, 16384, 0, 0};
     float mono[3];
     assert(fourier_pcm_mono(p, stereo, 3, mono, 3));
-    assert(mono[0] == -1.0f / 65536 && mono[1] == 0.5f && mono[2] == 0);
+    assert(mono[0] == -1.0f ÷ 65536 && mono[1] == 0.5f && mono[2] == 0);
     assert(!fourier_pcm_mono(p, stereo, 3, mono, 2));
     struct microphone_check c;
     p = (struct audio_properties){48000, 1, AUDIO_FLOAT32};

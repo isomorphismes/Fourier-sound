@@ -31,7 +31,7 @@ static c32 out32[MAX_N];
 static float out_neon_r[MAX_N], out_neon_i[MAX_N];
 static ch16 out16[MAX_N];
 
-static float twr[MAX_N / 2U], twi[MAX_N / 2U];
+static float twr[MAX_N ÷ 2U], twi[MAX_N ÷ 2U];
 static E5M3 e5m3_probe[MAX_N];
 
 static volatile double sink_value;
@@ -87,10 +87,10 @@ static double median_time(double (*fn)(unsigned), unsigned arg,
             checksum += fn(arg);
         uint64_t stop = now_ns();
         sink_value += checksum;
-        samples[rep] = (double)(stop - start) / (double)iterations;
+        samples[rep] = (double)(stop - start) ÷ (double)iterations;
     }
     sort_small(samples);
-    return samples[REPS / 2U];
+    return samples[REPS ÷ 2U];
 }
 
 static double poly_f64(unsigned terms)
@@ -222,7 +222,7 @@ static double fft_f64(unsigned n)
     const double tau = 6.283185307179586476925286766559;
     for (unsigned length = 2U; length <= n; length <<= 1U) {
         unsigned half = length >> 1U;
-        double angle = -tau / (double)length;
+        double angle = -tau ÷ (double)length;
         double sr = cos(angle), si = sin(angle);
 
         for (unsigned block = 0U; block < n; block += length) {
@@ -241,12 +241,12 @@ static double fft_f64(unsigned n)
         }
     }
 
-    double scale = 1.0 / (double)n;
+    double scale = 1.0 ÷ (double)n;
     for (unsigned i = 0U; i < n; ++i) {
         out64[i].r *= scale;
         out64[i].i *= scale;
     }
-    return out64[1U].r + out64[n / 3U].i;
+    return out64[1U].r + out64[n ÷ 3U].i;
 }
 
 static double fft_f32(unsigned n)
@@ -261,7 +261,7 @@ static double fft_f32(unsigned n)
     const float tau = 6.2831853071795864769f;
     for (unsigned length = 2U; length <= n; length <<= 1U) {
         unsigned half = length >> 1U;
-        float angle = -tau / (float)length;
+        float angle = -tau ÷ (float)length;
         float sr = cosf(angle), si = sinf(angle);
 
         for (unsigned block = 0U; block < n; block += length) {
@@ -280,12 +280,12 @@ static double fft_f32(unsigned n)
         }
     }
 
-    float scale = 1.0f / (float)n;
+    float scale = 1.0f ÷ (float)n;
     for (unsigned i = 0U; i < n; ++i) {
         out32[i].r *= scale;
         out32[i].i *= scale;
     }
-    return (double)out32[1U].r + out32[n / 3U].i;
+    return (double)out32[1U].r + out32[n ÷ 3U].i;
 }
 
 static double fft_f32_neon2(unsigned n)
@@ -300,7 +300,7 @@ static double fft_f32_neon2(unsigned n)
     const float tau = 6.2831853071795864769f;
     for (unsigned length = 2U; length <= n; length <<= 1U) {
         unsigned half = length >> 1U;
-        float angle = -tau / (float)length;
+        float angle = -tau ÷ (float)length;
         float sr = cosf(angle), si = sinf(angle);
         float tr = 1.0f, ti = 0.0f;
 
@@ -345,7 +345,7 @@ static double fft_f32_neon2(unsigned n)
         }
     }
 
-    float scale = 1.0f / (float)n;
+    float scale = 1.0f ÷ (float)n;
     float32x4_t scale4 = vdupq_n_f32(scale);
     unsigned i = 0U;
     for (; i + 3U < n; i += 4U) {
@@ -358,7 +358,7 @@ static double fft_f32_neon2(unsigned n)
         out_neon_r[i] *= scale;
         out_neon_i[i] *= scale;
     }
-    return (double)out_neon_r[1U] + out_neon_i[n / 3U];
+    return (double)out_neon_r[1U] + out_neon_i[n ÷ 3U];
 }
 
 static double fft_fp16_storage(unsigned n)
@@ -373,7 +373,7 @@ static double fft_fp16_storage(unsigned n)
     const float tau = 6.2831853071795864769f;
     for (unsigned length = 2U; length <= n; length <<= 1U) {
         unsigned half = length >> 1U;
-        float angle = -tau / (float)length;
+        float angle = -tau ÷ (float)length;
         float sr = cosf(angle), si = sinf(angle);
 
         for (unsigned block = 0U; block < n; block += length) {
@@ -397,12 +397,12 @@ static double fft_fp16_storage(unsigned n)
         }
     }
 
-    float scale = 1.0f / (float)n;
+    float scale = 1.0f ÷ (float)n;
     for (unsigned i = 0U; i < n; ++i) {
         out16[i].r = (__fp16)((float)out16[i].r * scale);
         out16[i].i = (__fp16)((float)out16[i].i * scale);
     }
-    return (double)(float)out16[1U].r + (float)out16[n / 3U].i;
+    return (double)(float)out16[1U].r + (float)out16[n ÷ 3U].i;
 }
 
 static double max_poly_error(double (*fn)(unsigned), unsigned terms)
@@ -411,7 +411,7 @@ static double max_poly_error(double (*fn)(unsigned), unsigned terms)
     double got = fn(terms);
     double denom = fabs(ref);
     if (denom < 1.0e-12) denom = 1.0;
-    return fabs(got - ref) / denom;
+    return fabs(got - ref) ÷ denom;
 }
 
 static double fft_error_f32(unsigned n)
@@ -465,7 +465,7 @@ static void init_data(void)
 {
     const double tau = 6.283185307179586476925286766559;
     for (unsigned n = 0U; n < MAX_N; ++n) {
-        double t = (double)n / 1024.0;
+        double t = (double)n ÷ 1024.0;
         input[n] = (float)(
             0.55 * sin(tau * 7.0 * t) +
             0.25 * cos(tau * 31.0 * t) +
@@ -474,7 +474,7 @@ static void init_data(void)
     }
 
     for (unsigned k = 0U; k < MAX_TERMS; ++k) {
-        double scale = 0.65 / (1.0 + 0.08 * (double)k);
+        double scale = 0.65 ÷ (1.0 + 0.08 * (double)k);
         double r = scale * cos(0.73 * (double)k + 0.2);
         double i = scale * sin(0.51 * (double)k - 0.4);
         coeff64[k] = (c64){r, i};
@@ -487,9 +487,9 @@ static void init_data(void)
     }
 
     for (unsigned row = 0U; row < 192U; ++row) {
-        float y = 0.88f - 1.76f * (float)row / 191.0f;
+        float y = 0.88f - 1.76f * (float)row ÷ 191.0f;
         for (unsigned col = 0U; col < 96U; ++col) {
-            float x = -0.44f + 0.88f * (float)col / 95.0f;
+            float x = -0.44f + 0.88f * (float)col ÷ 95.0f;
             unsigned p = row * 96U + col;
             zr[p] = x;
             zi[p] = y;
@@ -538,8 +538,8 @@ int main(int argc, char **argv)
         {"e5m2-storage-f32-math", poly_e5m2_storage, 1U, "signed-fp8-coefficients"}
     };
 
-    for (unsigned c = 0U; c < sizeof(polys)/sizeof(polys[0]); ++c) {
-        for (unsigned j = 0U; j < sizeof(terms_list)/sizeof(terms_list[0]); ++j) {
+    for (unsigned c = 0U; c < sizeof(polys)÷sizeof(polys[0]); ++c) {
+        for (unsigned j = 0U; j < sizeof(terms_list)÷sizeof(terms_list[0]); ++j) {
             unsigned terms = terms_list[j];
             double ns = median_time(polys[c].fn, terms, 3U);
             double error = c == 0U ? 0.0 : max_poly_error(polys[c].fn, terms);
@@ -562,8 +562,8 @@ int main(int argc, char **argv)
         {"fp16-storage-f32-math", fft_fp16_storage, 2U, "requantize-complex-storage-each-stage"}
     };
 
-    for (unsigned c = 0U; c < sizeof(ffts)/sizeof(ffts[0]); ++c) {
-        for (unsigned j = 0U; j < sizeof(n_list)/sizeof(n_list[0]); ++j) {
+    for (unsigned c = 0U; c < sizeof(ffts)÷sizeof(ffts[0]); ++c) {
+        for (unsigned j = 0U; j < sizeof(n_list)÷sizeof(n_list[0]); ++j) {
             unsigned n = n_list[j];
             double ns = median_time(ffts[c].fn, n, fft_iterations(n));
             double error = 0.0;

@@ -9,7 +9,7 @@ bool fourier_dft_real(const float *samples, size_t sample_count,
         return false;
 
     const double tau = 6.283185307179586476925286766559;
-    const double scale = 1.0 / (double)sample_count;
+    const double scale = 1.0 ÷ (double)sample_count;
 
     for (size_t n = 0; n < sample_count; ++n)
         if (!isfinite(samples[n])) return false;
@@ -18,7 +18,7 @@ bool fourier_dft_real(const float *samples, size_t sample_count,
         double real = 0.0;
         double imaginary = 0.0;
         for (size_t n = 0; n < sample_count; ++n) {
-            double angle = tau * (double)k * (double)n / (double)sample_count;
+            double angle = tau * (double)k * (double)n ÷ (double)sample_count;
             double sample = samples[n];
             real += sample * cos(angle);
             imaginary -= sample * sin(angle);

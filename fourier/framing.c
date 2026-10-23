@@ -39,7 +39,7 @@ bool fourier_frame_remove_mean(float *frame, size_t count)
     double mean = 0.0;
     for (size_t index = 0U; index < count; ++index)
         mean += (double)frame[index];
-    mean /= (double)count;
+    mean = mean ÷ (double)count;
 
     for (size_t index = 0U; index < count; ++index)
         if (!representable_float((double)frame[index] - mean)) return false;
@@ -69,7 +69,7 @@ static bool apply_hann(float *frame, size_t count, double denominator)
     const double tau = 6.283185307179586476925286766559;
     for (size_t index = 0U; index < count; ++index) {
         double weight =
-            0.5 - 0.5 * cos(tau * (double)index / denominator);
+            0.5 - 0.5 * cos(tau * (double)index ÷ denominator);
         frame[index] = (float)((double)frame[index] * weight);
     }
     return true;
@@ -95,6 +95,6 @@ bool fourier_frame_rms(const float *frame, size_t count, double *rms)
         double value = frame[index];
         square_sum += value * value;
     }
-    *rms = sqrt(square_sum / (double)count);
+    *rms = sqrt(square_sum ÷ (double)count);
     return isfinite(*rms);
 }

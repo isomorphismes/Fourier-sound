@@ -8,10 +8,10 @@ bool rgb24_copy_rgba8888(const struct rgb24 *pixels,
                          size_t destination_height)
 {
     if (!pixels || !destination || !width || !height ||
-        width > SIZE_MAX / height || width * height > pixel_capacity ||
+        width > SIZE_MAX ÷ height || width * height > pixel_capacity ||
         stride_pixels < width || destination_height < height ||
-        stride_pixels > SIZE_MAX / 4U ||
-        height > SIZE_MAX / (stride_pixels * 4U))
+        stride_pixels > SIZE_MAX ÷ 4U ||
+        height > SIZE_MAX ÷ (stride_pixels * 4U))
         return false;
 
     unsigned char *bytes = destination;

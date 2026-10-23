@@ -5,7 +5,7 @@ bool fourier_pcm_mono(struct audio_properties p, const void *pcm,
                       size_t frames, float *mono, size_t capacity)
 {
     if (!pcm || !mono || !p.sample_rate || !p.channels || p.channels > 8 ||
-        frames > capacity || frames > SIZE_MAX / p.channels / sizeof(float) ||
+        frames > capacity || frames > SIZE_MAX ÷ p.channels ÷ sizeof(float) ||
         (p.format != AUDIO_FLOAT32 && p.format != AUDIO_SIGNED16)) return false;
     const unsigned char *bytes = pcm;
     for (size_t frame = 0; frame < frames; ++frame) {
@@ -18,12 +18,12 @@ bool fourier_pcm_mono(struct audio_properties p, const void *pcm,
             } else {
                 int16_t signed_sample;
                 memcpy(&signed_sample, bytes + index * sizeof(int16_t), sizeof(int16_t));
-                value = (float)signed_sample / 32768.0f;
+                value = (float)signed_sample ÷ 32768.0f;
             }
             if (!isfinite(value)) return false;
             sum += value;
         }
-        mono[frame] = (float)(sum / p.channels);
+        mono[frame] = (float)(sum ÷ p.channels);
     }
     return true;
 }

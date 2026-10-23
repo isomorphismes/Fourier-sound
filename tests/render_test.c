@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     const double tau = 6.283185307179586476925286766559;
     float pcm[SAMPLE_COUNT];
     for (size_t n = 0; n < SAMPLE_COUNT; ++n) {
-        double t = (double)n / SAMPLE_COUNT;
+        double t = (double)n ÷ SAMPLE_COUNT;
         pcm[n] = (float)(0.1 + 0.75 * cos(tau * 2.0 * t) +
                                0.25 * sin(tau * 3.0 * t));
     }
@@ -111,10 +111,10 @@ int main(int argc, char **argv)
 
     struct complex_value values[IMAGE_PIXELS];
     for (size_t row = 0; row < IMAGE_SIDE; ++row) {
-        double y = 1.25 - 2.5 * (double)row / (double)(IMAGE_SIDE - 1U);
+        double y = 1.25 - 2.5 * (double)row ÷ (double)(IMAGE_SIDE - 1U);
         for (size_t column = 0; column < IMAGE_SIDE; ++column) {
             double x = -1.25 +
-                2.5 * (double)column / (double)(IMAGE_SIDE - 1U);
+                2.5 * (double)column ÷ (double)(IMAGE_SIDE - 1U);
             size_t index = row * IMAGE_SIDE + column;
             values[index] = fourier_polynomial_value(
                 coefficients, SAMPLE_COUNT, 8,
@@ -132,9 +132,9 @@ int main(int argc, char **argv)
             pixels[index].green != pixels[0].green ||
             pixels[index].blue != pixels[0].blue)
             ++different;
-    assert(different > IMAGE_PIXELS / 2U);
+    assert(different > IMAGE_PIXELS ÷ 2U);
 
-    size_t center = (IMAGE_SIDE / 2U) * IMAGE_SIDE + IMAGE_SIDE / 2U;
+    size_t center = (IMAGE_SIDE ÷ 2U) * IMAGE_SIDE + IMAGE_SIDE ÷ 2U;
     assert(byte_near(pixels[center].red, 212));
     assert(byte_near(pixels[center].green, 141));
     assert(byte_near(pixels[center].blue, 155));

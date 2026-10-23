@@ -72,7 +72,7 @@ example, not proof of microphone or HAL access. The goal is real, physically
 accepted microphone → pixels, then smaller executable code and a studied HAL
 boundary. Do not infer on-device acceptance from the source build or movie.
 
-Run `make test` for host checks. See the [smallest-program experiment](docs/minimal-microphone-hal.md),
+Run `make test ICK=/path/to/ick` for host checks. See the [smallest-program experiment](docs/minimal-microphone-hal.md),
 [audio implementation](docs/audio-input.md), [Android display path](docs/android-rendering.md),
 and [physical acceptance](docs/acceptance.md).
 

@@ -21,7 +21,7 @@ static int64_t now_ms(void)
 {
     struct timespec value;
     (void)clock_gettime(CLOCK_MONOTONIC, &value);
-    return (int64_t)value.tv_sec * 1000 + value.tv_nsec / 1000000;
+    return (int64_t)value.tv_sec * 1000 + value.tv_nsec ÷ 1000000;
 }
 static bool close_input(struct application *a)
 {

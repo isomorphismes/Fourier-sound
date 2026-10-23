@@ -94,7 +94,7 @@ static void frame_then_fft(void)
     const double tau = 6.283185307179586476925286766559;
     float stream[96];
     for (size_t n = 0U; n < 96U; ++n) {
-        double t = (double)n / 64.0;
+        double t = (double)n ÷ 64.0;
         stream[n] = (float)(2.5 + 0.8 * cos(tau * 8.0 * t));
     }
 

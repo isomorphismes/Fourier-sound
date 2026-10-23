@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'bench/qemu-armv7-numerics'
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,41 +13,79 @@ permissions:
 jobs:
   benchmark:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 150
     steps:
       - name: Check out Fourier-sound benchmark
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Check out pinned ICK low-precision definitions
+      - name: Check out the exact ICK compiler and low-precision definitions
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: dilapidated-shed/ick
-          ref: 2176498723bf01792236cef3bebf349822cae496
+          ref: c61e448251744a2f40ad743ebef1a027bdcd2f9d
           path: .ick
+          submodules: true
           persist-credentials: false
 
-      - name: Install ARMv7 cross compiler and QEMU user emulator
+      - name: Check out the shared ICK cross-compiler producer
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: isomorphisms/ai-ci
+          ref: 903b2cb27ea572c9c6cb2ffa9f39e0fbf06ec9f8
+          path: .aici
+          sparse-checkout: |
+            ick-android
+            ick-host
+          persist-credentials: false
+
+      - name: Restore the exact ARM ICK compiler
+        id: ick-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/ick-android-armeabi-v7a-stage
+          key: ick-android-v1-${{ runner.os }}-${{ runner.arch }}-armeabi-v7a-c61e448251744a2f40ad743ebef1a027bdcd2f9d
+
+      - name: Install ICK bootstrap, GNU ARM runtime, and QEMU user emulator
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi \
-            libc6-dev-armel-cross qemu-user python3
+            libc6-dev-armel-cross qemu-user python3 \
+            build-essential flex bison texinfo libgmp-dev libmpfr-dev libmpc-dev
+
+      - name: Build the source-pinned GNU-target ICK compiler
+        if: steps.ick-cache.outputs.cache-hit != 'true'
+        run: >-
+          make -f .aici/ick-android/Makefile
+          ABI=armeabi-v7a
+          ICK_SOURCE="$GITHUB_WORKSPACE/.ick"
+          ICK_BUILD="$RUNNER_TEMP/ick-android-armeabi-v7a-build"
+          ICK_STAGE="$RUNNER_TEMP/ick-android-armeabi-v7a-stage"
 
       - name: Build Thumb-2 benchmark
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p build/qemu-numeric
-          arm-linux-gnueabi-gcc \
+          ick="$RUNNER_TEMP/ick-android-armeabi-v7a-stage/bin/arm-linux-gnueabi-gcc"
+          runtime="$(dirname "$(arm-linux-gnueabi-gcc -print-libgcc-file-name)")"
+          "$ick" \
+            -B"$runtime/" -B/usr/arm-linux-gnueabi/bin/ -B/usr/arm-linux-gnueabi/lib/ \
+            -nostdinc -isystem "$("$ick" -print-file-name=include)" \
+            -isystem /usr/arm-linux-gnueabi/include \
+            -fno-link-libatomic -fno-use-linker-plugin \
             -std=c11 -O3 -static -fno-tree-vectorize \
             -march=armv7-a -mthumb \
             -mfpu=neon-vfpv4 -mfloat-abi=softfp -mfp16-format=ieee \
             -Wall -Wextra -Werror -Wpedantic \
             -I.ick/ick/include \
-            bench/qemu_numeric_matrix.c -lm \
+            bench/qemu_numeric_matrix.c \
+            -L"$runtime" -L/usr/arm-linux-gnueabi/lib \
+            -Wl,--start-group -lm -lc -lgcc -lgcc_eh -Wl,--end-group \
             -o build/qemu-numeric/numeric-matrix-armv7
           arm-linux-gnueabi-readelf -h \
             build/qemu-numeric/numeric-matrix-armv7 \
@@ -61,7 +100,9 @@ jobs:
           grep -q 'Tag_CPU_arch: v7' build/qemu-numeric/attributes.txt
           grep -q 'Tag_THUMB_ISA_use: Thumb-2' build/qemu-numeric/attributes.txt
           {
-            echo 'Compiler:'
+            echo 'Owned C compiler: ICK c61e448251744a2f40ad743ebef1a027bdcd2f9d'
+            "$ick" --version | head -1
+            echo 'GNU glibc/libgcc runtime provider:'
             arm-linux-gnueabi-gcc --version | head -1
             echo
             echo 'QEMU:'
@@ -71,6 +112,7 @@ jobs:
             grep -E '\bv(add|sub|mul|mla|mls|cvt).*\.f(16|32)|\bq[0-9]+\b' \
               build/qemu-numeric/disassembly.txt | head -80 || true
           } > build/qemu-numeric/toolchain.txt
+          git rev-parse HEAD > build/qemu-numeric/source-commit.txt
 
       - name: Run emulator matrix
         shell: bash
@@ -109,8 +151,8 @@ jobs:
           throughput claim for it.
           EOF
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: armv7-qemu-numeric-matrix-${{ github.sha }}
+          name: armv7-qemu-numeric-matrix-${{ github.event.pull_request.head.sha || github.sha }}
           path: build/qemu-numeric
           if-no-files-found: error
