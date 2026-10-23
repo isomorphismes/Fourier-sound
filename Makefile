@@ -398,10 +398,11 @@ $(eval $(call measured_abi,x86_64,x86_64-linux-android26-clang,-march=x86-64,$(I
 # host; the APK never defines FOURIER_GPU_DIAGNOSTICS.
 GPU_HOST_HEADERS ?=
 GPU_HOST_LIBS ?= -lEGL -lGLESv2
+GPU_REFERENCE_PCM ?=
 $(BUILD)/gpu-reference-test: tests/gpu_reference_test.c render/android/gpu_voice_pipeline.c render/android/gpu_voice_pipeline.h fourier/dft.c fourier/framing.c fourier/complex_field.c render/wegert.c
 	mkdir -p $(@D)
 	$(CC) -std=c17 $(CFLAGS) $(WARN) -DFOURIER_GPU_DIAGNOSTICS -DEGL_NO_PLATFORM_SPECIFIC_TYPES -Itests/fake $(INCLUDES) $(GPU_HOST_HEADERS) $< render/android/gpu_voice_pipeline.c fourier/dft.c fourier/framing.c fourier/complex_field.c render/wegert.c $(GPU_HOST_LIBS) -lm -o $@
 
 .PHONY: gpu-reference-test
 gpu-reference-test: $(BUILD)/gpu-reference-test
-	LIBGL_ALWAYS_SOFTWARE=1 $(BUILD)/gpu-reference-test
+	LIBGL_ALWAYS_SOFTWARE=1 $(BUILD)/gpu-reference-test $(GPU_REFERENCE_PCM)

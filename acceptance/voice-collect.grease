@@ -1,0 +1,54 @@
+#!/usr/bin/env grease
+# Read-only device collection from a build host with an already-authorized ADB.
+# Installation and human acoustic/visual acceptance remain separate actions.
+set -o errexit
+set -o pipefail
+
+if (len(ARGV) !== 6) {
+  printf '\033[31mFAIL\033[0m usage: voice-collect.grease phone|c67 SERIAL /absolute/adb /absolute/candidate.apk SHA256 /absolute/new-output\n'
+  exit 2
+}
+var target = ARGV[0]
+var serial = ARGV[1]
+var adb = ARGV[2]
+var apk = ARGV[3]
+var digest = ARGV[4]
+var output = ARGV[5]
+var model_expected = ''
+var abi_expected = ''
+if (target === 'phone') {
+  setvar model_expected = 'MIRO-A1'
+  setvar abi_expected = 'armeabi-v7a'
+} elif (target === 'c67') {
+  setvar model_expected = 'MIRO-C67'
+  setvar abi_expected = 'arm64-v8a'
+} else {
+  printf '\033[31mFAIL\033[0m expected phone or c67; tablet ADB work remains deferred\n'
+  exit 2
+}
+if (serial === '' or adb !== $(realpath "$adb") or apk !== $(realpath "$apk") or output !== $(realpath -m "$output")) {
+  printf '\033[31mFAIL\033[0m explicit serial and canonical absolute ADB/APK/output paths required\n'
+  exit 2
+}
+test -x "$adb"
+test -f "$apk"
+test ! -e "$output"
+printf '%s  %s\n' "$digest" "$apk" | sha256sum -c -
+var model = $($adb -s "$serial" shell getprop ro.product.model | tr -d '\r' | tr '[:lower:]' '[:upper:]' | tr ' _' '--')
+var abi = $($adb -s "$serial" shell getprop ro.product.cpu.abi | tr -d '\r')
+if (model !== model_expected or abi !== abi_expected) {
+  printf '\033[31mFAIL\033[0m expected %s %s; observed %s %s\n' "$model_expected" "$abi_expected" "$model" "$abi"
+  exit 2
+}
+mkdir "$output"
+printf 'target\t%s\nserial\t%s\nmodel\t%s\nabi\t%s\ncandidate_sha256\t%s\ncollection_start\tCOLLECTING_NOT_ACCEPTED\n' "$target" "$serial" "$model" "$abi" "$digest" > "$output/receipt.tsv"
+printf '\033[36mREAD\033[0m collecting identity, current package, audio route, memory and tagged application logs\n'
+$adb -s "$serial" shell getprop ro.build.fingerprint > "$output/build-fingerprint.txt"
+$adb -s "$serial" shell getprop ro.build.version.sdk > "$output/api.txt"
+$adb -s "$serial" shell getprop ro.product.cpu.abilist > "$output/abis.txt"
+$adb -s "$serial" shell dumpsys package org.isomorphismes.fouriersound.voice > "$output/installed-package.txt"
+$adb -s "$serial" shell dumpsys media.audio_flinger > "$output/audio-flinger.txt"
+$adb -s "$serial" shell dumpsys meminfo org.isomorphismes.fouriersound.voice > "$output/memory.txt"
+$adb -s "$serial" logcat -d -v threadtime -s FourierVoice:I FourierVoiceGPU:I '*:S' > "$output/voice.log"
+printf 'status\tCOLLECTED_UNREVIEWED\nphysical_device_acceptance\tNOT_RUN\ninstalled_artifact_match\tNOT_RUN\n' >> "$output/receipt.tsv"
+printf '\033[32mCOLLECTED\033[0m %s; review artifact identity and acoustic/visual/lifecycle results separately\n' "$output"

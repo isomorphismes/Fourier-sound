@@ -1,7 +1,7 @@
 # GPU-resident live spectrum path
 
-The MIRO A1 experiment on `gpu/fft-wegert-resident` removes the live
-CPU spectrum/render loop.
+The retained MIRO A1 experiment from `gpu/fft-wegert-resident` is reconciled
+with the owned-ICK producer branch. It removes the live CPU spectrum/render loop.
 
 ## Data path
 
@@ -66,26 +66,40 @@ VOICE_GPU_PATH fft=compute-shader spectrum=SSBO renderer=fragment-shader spectru
 VOICE_FRAME ... fft=gpu-radix2 ... spectrum_readback=none
 ```
 
-The CI artifact is `fourier-voice-gpu-miro-release.apk`, a stripped
-`armeabi-v7a`, no-DEX package using the same signing key and package name as
-the earlier Fourier Voice test APK, with version code 5. It shares package
+The measured candidates are `fourier-voice-gpu-ABI-v7.apk`, stripped
+ARMv7, AArch64 and x86-64 no-DEX packages using the same signing key and package
+name as the earlier Fourier Voice test APK, with version code 7. They share package
 identity with the CPU release; switching variants still requires digest and
 signer verification and does not authorize uninstalling an incompatible package.
 
 ## Outstanding integration gate
 
-This is the one remaining implementation PR after CPU/reference consolidation.
+The retained GPU work remains subject to its original physical acceptance gate.
 Follow `docs/pr-consolidation.md`, `docs/acceptance.md` and
 `docs/android-rendering.md` for the inherited physical obligations. Microphone
 permission/acoustic/lifecycle checks, static window visual/timing checks and
 replacement installation remain unverified for these newly packaged bytes.
 PowerVR shader compile/link, independent spectrum/colour/orientation comparison,
 live motion and pacing must be accepted before this GPU PR merges.
-TAB_P10 requires separate ABI and Mali acceptance; this APK targets MIRO A1 only.
+MIRO A1 is primary; C67 and TAB_P10 require their own acceptance even when
+they use the same AArch64 candidate.
 
-Builds use the shared android-NDK packager and request A32/softfp application C.
-The exact current ICK/Bionic compilation gap is retained in
-`docs/functorial-c.md`; no full-Icky or GPU-driver result follows from a native
-library link. The CPU reference remains available through its separate activity
-and host tests, while the GPU activity uploads PCM rather than CPU-produced
-spectrum. Host tests do not execute GLSL.
+Builds use the shared android-NDK packager. All application C, including the
+GPU pipeline, goes through ICK; upstream glue, assembly and linking remain
+NDK stages. ARMv7 retains A32/softfp. No Android driver result follows from a
+native library link.
+
+`make gpu-reference-test` executes the production compute/fragment shaders
+on a host GLES driver with a diagnostic pbuffer. The independent direct DFT
+checks all 1024 complex coefficients. Pixel tests compare the CPU construction
+and Wegert colors at the same rectangle endpoints, reversing OpenGL's bottom
+row convention explicitly. Tiny values and color discontinuities are counted
+as exclusions, not silently included in a broad accuracy claim. Silence still
+compares every pixel, including the defined zero phase. An optional exact
+Nightingale signed16 fixture supplies a real recorded window.
+
+Only this test defines FOURIER_GPU_DIAGNOSTICS, exposing coefficient readback
+and a host pbuffer. Shipping import checks reject glMapBufferRange and
+glReadPixels, as well as the CPU FFT. The shipping spectrum remains in its
+final ping-pong SSBO. Mesa/llvmpipe execution is HOST_TESTED; it does not accept
+the MIRO A1/C67 PowerVR or TAB_P10 Mali driver.

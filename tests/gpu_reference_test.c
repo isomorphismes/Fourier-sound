@@ -34,7 +34,8 @@ int32_t ANativeWindow_setBuffersGeometry(ANativeWindow *window,
     abort(); /* The host test must use its diagnostic pbuffer. */
 }
 
-static void check(struct gpu_voice_pipeline *pipeline, unsigned int fixture)
+static void check(struct gpu_voice_pipeline *pipeline, unsigned int fixture,
+                  const float *recorded)
 {
     const double tau = 6.283185307179586476925286766559;
     float samples[COUNT];
@@ -51,8 +52,9 @@ static void check(struct gpu_voice_pipeline *pipeline, unsigned int fixture)
         case 5: samples[n] = (float)(0.2 + 0.5 * cos(phase) + 0.25 * sin(3.0 * phase)); break;
         default: samples[n] = (float)((double)(random >> 8U) ÷ 16777216.0 - 0.5); break;
         }
+        if (recorded) samples[n] = recorded[n];
     }
-    if (fixture == 7U) {
+    if (fixture >= 7U) {
         assert(fourier_frame_remove_mean(samples, COUNT));
         assert(fourier_frame_apply_hann_periodic(samples, COUNT));
     }
@@ -109,11 +111,26 @@ static void check(struct gpu_voice_pipeline *pipeline, unsigned int fixture)
     if (fixture == 0U || fixture == 2U || fixture >= 5U) assert(compared > 100U);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+    assert(argc == 1 || argc == 2);
     struct gpu_voice_pipeline *pipeline = gpu_voice_pipeline_create(NULL, COUNT, 24U, WIDTH, HEIGHT);
     assert(pipeline);
-    for (unsigned int fixture = 0U; fixture < 8U; ++fixture) check(pipeline, fixture);
+    for (unsigned int fixture = 0U; fixture < 8U; ++fixture) check(pipeline, fixture, NULL);
+    if (argc == 2) {
+        FILE *file = fopen(argv[1], "rb");
+        assert(file && fseek(file, (9600L - COUNT) * 2L, SEEK_SET) == 0);
+        float samples[COUNT];
+        for (size_t index = 0U; index < COUNT; ++index) {
+            int low = fgetc(file), high = fgetc(file);
+            assert(low != EOF && high != EOF);
+            unsigned int word = (unsigned int)low | ((unsigned int)high << 8U);
+            int signed_value = word >= 32768U ? (int)word - 65536 : (int)word;
+            samples[index] = (float)signed_value ÷ 32768.0f;
+        }
+        assert(fclose(file) == 0);
+        check(pipeline, 8U, samples);
+    }
     gpu_voice_pipeline_destroy(&pipeline);
     assert(!pipeline);
     puts("PASS host driver FFT/SSBO/polynomial/Wegert comparison; physical PowerVR/Mali execution NOT_RUN");
