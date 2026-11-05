@@ -8,7 +8,8 @@ CFLAGS ?= -O2 -g
 WARN = -Wall -Wextra -Werror -Wpedantic -Wshadow
 INCLUDES = -Iaudio/interface -Iaudio/android -Ifourier -Imath -Irender -Irender/android -Iacceptance
 COMMON = audio/interface/pcm_ring.c audio/interface/audio_result.c fourier/pcm_block.c acceptance/microphone_check.c
-HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h render/android/*.h acceptance/*.h)
+HEADERS = $(wildcard audio/interface/*.h audio/android/*.h fourier/*.h math/*.h render/*.h render/android/*.h acceptance/*.h android/*.h)
+CHARCOAL_RESOURCES = $(wildcard android/res/*/*.xml)
 RENDER = fourier/dft.c fourier/fft.c fourier/framing.c fourier/complex_field.c fourier/sparse_series.c render/wegert.c render/complex_plot.c render/ppm.c
 ANDROID_HOME ?= /opt/android-sdk
 NDK ?= $(ANDROID_HOME)/ndk/27.2.12479018
@@ -29,6 +30,7 @@ define package_native
 	ANDROID_KEYSTORE_TYPE=JKS ANDROID_KEY_ALIAS=wegert-debug \
 	ANDROID_STORE_PASSWORD=wegert-debug ANDROID_KEY_PASSWORD=wegert-debug \
 	ANDROID_EXPECTED_CERT_SHA256=de9b1d47c5a65e6d46a204b79dd9ee566b9d3c9832ba81ebc4213d3392e92ff9 \
+	ANDROID_RES_DIR="$(abspath android/res)" \
 	bash "$(APK_PACKAGER)" "$(4)" "$(5)" "$(6)" "$(7)"
 	sha256sum $(7) > $(7).sha256
 endef
@@ -217,16 +219,16 @@ $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so: $(addprefi
 android-libraries-$(1): $(BUILD)/android/$(1)/libfourier_render_ref.so $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so
 android-$(1): $(BUILD)/fourier-microphone-$(1).apk $(BUILD)/fourier-speaker-$(1).apk $(BUILD)/fourier-render-window-$(1).apk $(BUILD)/fourier-voice-$(1).apk $(BUILD)/android/$(1)/libfourier_render_ref.so
 
-$(BUILD)/fourier-microphone-$(1).apk: $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so android/AndroidManifest.xml
+$(BUILD)/fourier-microphone-$(1).apk: $(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so android/AndroidManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound,$(VERSION_CODE),0.1.0,android/AndroidManifest.xml,$(BUILD)/android/$(1)/staging/lib/$(1)/libfourier_microphone.so,$(1),$(BUILD)/fourier-microphone-$(1).apk)
 
-$(BUILD)/fourier-render-window-$(1).apk: $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so android/RenderManifest.xml
+$(BUILD)/fourier-render-window-$(1).apk: $(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so android/RenderManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.render,$(VERSION_CODE),0.1.0,android/RenderManifest.xml,$(BUILD)/android/$(1)/render-staging/lib/$(1)/libfourier_render_window.so,$(1),$(BUILD)/fourier-render-window-$(1).apk)
 
-$(BUILD)/fourier-voice-$(1).apk: $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so android/VoiceManifest.xml
+$(BUILD)/fourier-voice-$(1).apk: $(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so android/VoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,2,0.2.0,android/VoiceManifest.xml,$(BUILD)/android/$(1)/voice-staging/lib/$(1)/libfourier_voice.so,$(1),$(BUILD)/fourier-voice-$(1).apk)
 
-$(BUILD)/fourier-speaker-$(1).apk: $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so android/SpeakerManifest.xml
+$(BUILD)/fourier-speaker-$(1).apk: $(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so android/SpeakerManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.speaker,$(VERSION_CODE),0.1.0,android/SpeakerManifest.xml,$(BUILD)/android/$(1)/speaker-staging/lib/$(1)/libfourier_speaker.so,$(1),$(BUILD)/fourier-speaker-$(1).apk)
 
 endef
@@ -280,7 +282,7 @@ $(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.
 	mkdir -p $(@D)
 	$(TOOLCHAIN)/armv7a-linux-androideabi26-clang $(ARMV7_TARGET_FLAGS) $(ANDROID_SHARED_FLAGS) $^ -laaudio -landroid -llog -lm -o $@
 
-$(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk: $(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
+$(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk: $(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,3,0.3.0-ick,android/VoiceManifest.xml,$(BUILD)/android/armeabi-v7a/voice-ick-staging/lib/armeabi-v7a/libfourier_voice.so,armeabi-v7a,$(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk)
 
 android-ick-leaf-armv7: $(BUILD)/fourier-voice-ick-leaf-armeabi-v7a.apk
@@ -298,7 +300,7 @@ $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armea
 	! $(TOOLCHAIN)/llvm-readelf -S $@ | grep -q '\.debug_'
 	$(TOOLCHAIN)/llvm-readelf -h $@
 
-$(BUILD)/fourier-voice-miro-release.apk: $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
+$(BUILD)/fourier-voice-miro-release.apk: $(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,5,0.5.0,android/VoiceManifest.xml,$(BUILD)/release/ndk/lib/armeabi-v7a/libfourier_voice.so,armeabi-v7a,$(BUILD)/fourier-voice-miro-release.apk)
 
 $(BUILD)/android/armeabi-v7a/voice-ick-release-unstripped/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armeabi-v7a/voice-leaf-release.o $(VOICE_COMMON_OBJECTS) $(BUILD)/android/armeabi-v7a/glue.o $(ICK_ARMV7_OBJECT)
@@ -313,7 +315,7 @@ $(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armea
 	! $(TOOLCHAIN)/llvm-readelf -S $@ | grep -q '\.debug_'
 	$(TOOLCHAIN)/llvm-readelf -h $@
 
-$(BUILD)/fourier-voice-ick-leaf-miro-release.apk: $(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml
+$(BUILD)/fourier-voice-ick-leaf-miro-release.apk: $(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so android/VoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,5,0.5.0,android/VoiceManifest.xml,$(BUILD)/release/ick/lib/armeabi-v7a/libfourier_voice.so,armeabi-v7a,$(BUILD)/fourier-voice-ick-leaf-miro-release.apk)
 
 android-miro-release: $(BUILD)/fourier-voice-miro-release.apk
@@ -338,7 +340,7 @@ $(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so: $(BUILD)/android/armea
 	! $(TOOLCHAIN)/llvm-readelf -S $@ | grep -q '\.debug_'
 	$(TOOLCHAIN)/llvm-readelf -h $@
 
-$(BUILD)/fourier-voice-gpu-miro-release.apk: $(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so android/GpuVoiceManifest.xml
+$(BUILD)/fourier-voice-gpu-miro-release.apk: $(BUILD)/release/gpu/lib/armeabi-v7a/libfourier_voice.so android/GpuVoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,5,0.5.0-gpu,android/GpuVoiceManifest.xml,$<,armeabi-v7a,$@)
 
 .PHONY: android-gpu-miro-release
@@ -361,10 +363,10 @@ $(BUILD)/measured/$(1)/gpu/libfourier_voice.so: $(BUILD)/android/$(1)/voice-gpu/
 	cp $$< $$@
 	$(TOOLCHAIN)/llvm-strip --strip-unneeded $$@
 
-$(BUILD)/fourier-voice-cpu-$(1)-v7.apk: $(BUILD)/measured/$(1)/cpu/libfourier_voice.so android/VoiceManifest.xml
+$(BUILD)/fourier-voice-cpu-$(1)-v7.apk: $(BUILD)/measured/$(1)/cpu/libfourier_voice.so android/VoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,7,0.7.0,android/VoiceManifest.xml,$(BUILD)/measured/$(1)/cpu/libfourier_voice.so,$(1),$(BUILD)/fourier-voice-cpu-$(1)-v7.apk)
 
-$(BUILD)/fourier-voice-gpu-$(1)-v7.apk: $(BUILD)/measured/$(1)/gpu/libfourier_voice.so android/GpuVoiceManifest.xml
+$(BUILD)/fourier-voice-gpu-$(1)-v7.apk: $(BUILD)/measured/$(1)/gpu/libfourier_voice.so android/GpuVoiceManifest.xml $(CHARCOAL_RESOURCES)
 	$(call package_native,org.isomorphismes.fouriersound.voice,7,0.7.0-gpu,android/GpuVoiceManifest.xml,$(BUILD)/measured/$(1)/gpu/libfourier_voice.so,$(1),$(BUILD)/fourier-voice-gpu-$(1)-v7.apk)
 
 $(BUILD)/freestanding/$(1)/polynomial.s: fourier/ick_polynomial_leaf.c

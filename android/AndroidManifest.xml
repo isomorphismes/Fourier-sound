@@ -4,7 +4,7 @@
     <uses-feature android:name="android.hardware.microphone" android:required="true" />
     <application android:allowBackup="false" android:hasCode="false"
         android:extractNativeLibs="true" android:label="Fourier microphone test"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/Theme.Charcoal">
         <activity android:name="android.app.NativeActivity" android:exported="true"
             android:configChanges="orientation|keyboardHidden|screenSize">
             <meta-data android:name="android.app.lib_name" android:value="fourier_microphone" />

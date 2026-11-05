@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <android/log.h>
+#include "charcoal_window.h"
 #include <android_native_app_glue.h>
 #include "audio_output.h"
 #include "speaker_input.h"
@@ -115,6 +116,10 @@ static void command(struct android_app *app, int32_t code)
 {
     struct application *a = app->userData;
     switch (code) {
+    case APP_CMD_INIT_WINDOW:
+        if (fourier_charcoal_window(app->window)) LOG("CHARCOAL_FRAME speaker diagnostic");
+        else LOG("CHARCOAL_FRAME_ERROR speaker diagnostic");
+        break;
     case APP_CMD_RESUME:
         a->resumed = true;
         start_if_ready(a);

@@ -3,6 +3,7 @@
 #include <android_native_app_glue.h>
 #include "aaudio_input.h"
 #include "microphone_check.h"
+#include "charcoal_window.h"
 #include <inttypes.h>
 #include <time.h>
 #include <unistd.h>
@@ -79,6 +80,10 @@ static void command(struct android_app *app, int32_t code)
 {
     struct application *a = app->userData;
     switch (code) {
+    case APP_CMD_INIT_WINDOW:
+        if (fourier_charcoal_window(app->window)) LOG("CHARCOAL_FRAME microphone diagnostic");
+        else LOG("CHARCOAL_FRAME_ERROR microphone diagnostic");
+        break;
     case APP_CMD_RESUME: a->resumed = true; start_if_ready(a); break;
     case APP_CMD_GAINED_FOCUS: a->focused = true; start_if_ready(a); break;
     case APP_CMD_LOST_FOCUS: a->focused = false; (void)close_input(a); break;
