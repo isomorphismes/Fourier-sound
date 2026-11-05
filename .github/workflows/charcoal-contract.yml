@@ -1,0 +1,19 @@
+name: Canonical charcoal copies
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  palette:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: isomorphisms/ai-ci/.github/actions/charcoal-vendor@180a26a2f3b78f795c864309e0ad881b00ec61c3
+        with:
+          header: ${{ github.workspace }}/android/charcoal.h
+          resources: ${{ github.workspace }}/android/res
