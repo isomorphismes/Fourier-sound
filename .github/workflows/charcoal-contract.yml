@@ -13,7 +13,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - uses: isomorphisms/ai-ci/.github/actions/charcoal-vendor@180a26a2f3b78f795c864309e0ad881b00ec61c3
+      - uses: isomorphisms/ai-ci/.github/actions/charcoal-vendor@876a843dd7c5c635adaba854a53fd6f2c2139210
         with:
           header: ${{ github.workspace }}/android/charcoal.h
           resources: ${{ github.workspace }}/android/res

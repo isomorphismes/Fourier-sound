@@ -12,6 +12,11 @@
     <color name="charcoal_error">#FFB4AB</color>
     <color name="charcoal_warning">#E8CB8B</color>
     <color name="charcoal_success">#A8D5BA</color>
+    <!-- TextView's platform textAppearance can bypass textColorPrimary. -->
+    <style name="Widget.Charcoal.TextView" parent="android:style/Widget.TextView">
+        <item name="android:textColor">@color/charcoal_text_states</item>
+        <item name="android:textColorHint">@color/charcoal_secondary</item>
+    </style>
     <!-- API 19 remains supported by native consumers such as Chord Changes. -->
     <style name="Theme.Charcoal.Platform" parent="android:style/Theme.Holo.NoActionBar" />
     <style name="Theme.Charcoal.Dialog.Platform" parent="android:style/Theme.Holo.Dialog" />
@@ -23,6 +28,7 @@
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:forceDarkAllowed">false</item>
         <item name="android:textColorPrimary">@color/charcoal_text_states</item>
+        <item name="android:textViewStyle">@style/Widget.Charcoal.TextView</item>
         <item name="android:textColorSecondary">@color/charcoal_secondary</item>
         <item name="android:textColorHint">@color/charcoal_secondary</item>
         <item name="android:textColorLink">@color/charcoal_text</item>
@@ -35,6 +41,7 @@
         <item name="android:colorBackground">@color/charcoal_surface</item>
         <item name="android:colorForeground">@color/charcoal_text</item>
         <item name="android:textColorPrimary">@color/charcoal_text_states</item>
+        <item name="android:textViewStyle">@style/Widget.Charcoal.TextView</item>
         <item name="android:textColorSecondary">@color/charcoal_secondary</item>
         <item name="android:textColorHint">@color/charcoal_secondary</item>
         <item name="android:textColorHighlight">@color/charcoal_selection</item>
