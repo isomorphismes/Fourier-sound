@@ -20,3 +20,10 @@ The inherited source-built ABI, simulated audio, startup validation and real
 recording tests remain required. Signed packages alone do not qualify live
 microphone/speaker behavior or API29/34 both-mode startup/rotation appearance.
 Physical C67 checks are NOT_RUN; no application is installed or published.
+
+The inherited7c61ee packager ignores ANDROID_RES_DIR, as demonstrated by the
+same source-material consumer failure in Mostow run41968006546. All three
+Fourier package acquisition workflows and ci/platforms.tsv now explicitly pin
+the existing resource-capable42f04d7654d54309ec3f8787bfd2bc40730399d7 owner.
+Its receipt schema remains v1; signer, package and SDK requirements are preserved.
+New actual Fourier packaging evidence is required after this material change.
